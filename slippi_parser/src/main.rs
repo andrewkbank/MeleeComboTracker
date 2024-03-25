@@ -10,10 +10,10 @@ use ssbm_data::action_state::Common::{self, *};
 //stole a lot from https://github.com/project-slippi/slippi-js/blob/master/src/stats/combos.ts#L7
 
 fn main() {
-    let mut r = io::BufReader::new(fs::File::open("tests/test1.slp").unwrap());
+    let mut r = io::BufReader::new(fs::File::open("tests/test3.slp").unwrap());
     let game = read(&mut r, None).unwrap();
 
-    let mut is_comboed = vec![vec ![false; game.frames.len()]; game.frames.ports.len()];
+    //let mut is_comboed = vec![vec ![false; game.frames.len()]; game.frames.ports.len()];
     let rollbacks = game.frames.rollbacks(Rollbacks::ExceptLast);
     for frame_idx in 1..game.frames.len() {
         if rollbacks[frame_idx]{
@@ -31,17 +31,28 @@ fn main() {
                     game.frames.id.get(frame_idx).unwrap()
                 );
             }
+
+            //track getting grabbed
+            if is_grabbed(state) && !is_grabbed(port_data.leader.post.state.get(frame_idx-1).unwrap_or(0)){   //grabbed this frame and not the last frame
+                println!(
+                    "{} grabbed on frame {}", 
+                    game.start.players[port_idx].port,
+                    game.frames.id.get(frame_idx).unwrap()
+                );
+            }
             
             //track hitstun
             //state list here: https://docs.rs/ssbm-data/latest/ssbm_data/action_state/enum.Common.html
             if is_damaged(state)||is_grabbed(state)||is_command_grabbed(state){
-                is_comboed[port_idx][frame_idx] = true;
+                //is_comboed[port_idx][frame_idx] = true;
+                /*
                 println!(
                     "{} on frame {} in animation {}",
                     game.start.players[port_idx].port,
                     game.frames.id.get(frame_idx).unwrap(),
                     state
                 );
+                */
             }
         }
     }
