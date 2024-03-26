@@ -1,6 +1,7 @@
 use std::{fs, io};
 use peppi::io::slippi::read;
 use peppi::frame::Rollbacks;
+use arrow2::array::PrimitiveArray;
 
 // `ssbm-data` provides enums for characters, stages, action states, etc.
 // You can just hard-code constants instead, if you prefer.
@@ -10,7 +11,7 @@ use ssbm_data::action_state::Common::{self, *};
 //stole a lot from https://github.com/project-slippi/slippi-js/blob/master/src/stats/combos.ts#L7
 
 fn main() {
-    let mut r = io::BufReader::new(fs::File::open("tests/test3.slp").unwrap());
+    let mut r = io::BufReader::new(fs::File::open("tests/test1.slp").unwrap());
     let game = read(&mut r, None).unwrap();
 
     //let mut is_comboed = vec![vec ![false; game.frames.len()]; game.frames.ports.len()];
@@ -29,6 +30,10 @@ fn main() {
                     "{} hit on frame {}", 
                     game.start.players[port_idx].port,
                     game.frames.id.get(frame_idx).unwrap()
+                );
+                println!(
+                    "Last hit by instance {}",
+                    <Option<arrow2::array::PrimitiveArray<u16>> as Clone>::clone(&port_data.leader.post.last_hit_by_instance).unwrap_or_default().get(frame_idx).unwrap_or(0)
                 );
             }
 
