@@ -1,4 +1,5 @@
-use std::{fs, io};
+use std::{fs, io, env};
+//use std::str;
 use peppi::io::slippi::read;
 use peppi::frame::Rollbacks;
 use arrow2::array::PrimitiveArray;
@@ -11,7 +12,12 @@ use ssbm_data::action_state::Common::{self, *};
 //stole a lot from https://github.com/project-slippi/slippi-js/blob/master/src/stats/combos.ts#L7
 
 fn main() {
-    let mut r = io::BufReader::new(fs::File::open("tests/test1.slp").unwrap());
+    let args: Vec<String> = env::args().collect();
+    if args.len() != 2 {
+        println!("Please pass only the path of a replay file or an archive containing a replay file.");
+        return;
+    }
+    let mut r = io::BufReader::new(fs::File::open(&args[1]).unwrap());
     let game = read(&mut r, None).unwrap();
 
     //let mut is_comboed = vec![vec ![false; game.frames.len()]; game.frames.ports.len()];

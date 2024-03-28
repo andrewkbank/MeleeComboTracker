@@ -9,3 +9,5 @@ edition = "2021"
 peppi = "2.0.0-alpha.5"
 ssbm-data = "0.1.0"
 arrow2 = "0.17.4"
+libarchive = "*"
+
