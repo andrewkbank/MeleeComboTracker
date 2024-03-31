@@ -5,33 +5,28 @@ use peppi::frame::Rollbacks;
 
 // `ssbm-data` provides enums for characters, stages, action states, etc.
 // You can just hard-code constants instead, if you prefer.
-use ssbm_data::action_state::Common::{self, *};
+use ssbm_data::action_state::Common::{*};
 
 
 //stole a lot from https://github.com/project-slippi/slippi-js/blob/master/src/stats/combos.ts#L7
 
 fn main() {
-    let mut r = io::BufReader::new(fs::File::open("tests/test4.slp").unwrap());
+    let mut r = io::BufReader::new(fs::File::open("tests/test3.slp").unwrap());
     let game = read(&mut r, None).unwrap();
     let metadata = game.metadata;
-    //let characters = None;
-    ///*
     match metadata {
         Some(map) => {
             // If Some, print the contents of the HashMap
             for (key, value) in map.iter() {
                 println!("Key: {}, Value: {:?}", key, value);
             }
-            //characters = map["players"];
         }
         None => {
             println!("Option is None");
         }
     }
-    //*/
-    //let mut is_comboed = vec![vec ![false; game.frames.len()]; game.frames.ports.len()];
     let rollbacks = game.frames.rollbacks(Rollbacks::ExceptLast);
-    let mut last_attack=0;
+    let mut last_attack: [u8;2] = [0,0];
     for frame_idx in 1..game.frames.len() {
         if rollbacks[frame_idx]{
             continue;
@@ -59,7 +54,7 @@ fn main() {
                     );
                     println!(
                         "{} comboed into grab",
-                        last_attack
+                        last_attack[port_idx]
                     );
                 }else{
                     println!(
@@ -97,7 +92,7 @@ fn main() {
                         );
                         println!(
                             "{} comboed into {}",
-                            last_attack,
+                            last_attack[port_idx],
                             opponent_attack
                         );
                     }else{
@@ -109,7 +104,7 @@ fn main() {
                         );
                     }
                 }
-                last_attack=opponent_attack;
+                last_attack[port_idx]=opponent_attack;
             }
         }
     }
