@@ -11,7 +11,7 @@ use ssbm_data::action_state::Common::{self, *};
 //stole a lot from https://github.com/project-slippi/slippi-js/blob/master/src/stats/combos.ts#L7
 
 fn main() {
-    let mut r = io::BufReader::new(fs::File::open("tests/test3.slp").unwrap());
+    let mut r = io::BufReader::new(fs::File::open("tests/test4.slp").unwrap());
     let game = read(&mut r, None).unwrap();
     let metadata = game.metadata;
     //let characters = None;
@@ -69,39 +69,45 @@ fn main() {
                     );
                 }
                 
-            }
-            
+            }else 
             //track hits
             if hit_by_instance != last_hit_by_instance {
-                let opponent = port_data.leader.post.last_hit_by.get(frame_idx).unwrap_or(0);
+                let mut opponent = port_data.leader.post.last_hit_by.get(frame_idx).unwrap_or(0);
 
-                //ignore opponent=6
+                //special case for opponent=6
                 //https://github.com/project-slippi/slippi-js/pull/71
+                //assuming 2 players
                 if opponent==6 {
-                    println!("SKIPPED OPPONENT 6");
-                    continue;
+                    //println!("OPPONENT 6 on frame {}",game.frames.id.get(frame_idx).unwrap());
+                    opponent = (port_idx as u8+1)%2;
+                    //println!("Opponent chosen: {}",opponent);
+                }else{
+                    if opponent as usize>port_idx{
+                        opponent=1;
+                    }else{
+                        opponent=0;
+                    }
                 }
                 //let opponent_move = game.frames.ports[opponent as usize].leader.post.state.get(frame_idx).unwrap_or(0);
                 let opponent_attack= game.frames.ports[opponent as usize].leader.post.last_attack_landed.get(frame_idx).unwrap_or(0);
-                if in_hitstun{
-                    println!(
-                        "{} comboed on frame {} by instance {}", 
-                        game.start.players[port_idx].port,
-                        game.frames.id.get(frame_idx).unwrap(),
-                        hit_by_instance
-                    );
-                    println!(
-                        "{} comboed into {}",
-                        last_attack,
-                        opponent_attack
-                    );
-                }else{
-                    println!(
-                        "{} raw hit on frame {} by instance {}", 
-                        game.start.players[port_idx].port,
-                        game.frames.id.get(frame_idx).unwrap(),
-                        hit_by_instance
-                    );
+                if !is_pummel_or_throw(opponent_attack) {
+                    if in_hitstun{
+                        println!(
+                            "{} comboed on frame {} by instance {}", game.start.players[port_idx].port, game.frames.id.get(frame_idx).unwrap(), hit_by_instance
+                        );
+                        println!(
+                            "{} comboed into {}",
+                            last_attack,
+                            opponent_attack
+                        );
+                    }else{
+                        println!(
+                            "{} raw hit on frame {} by instance {}", 
+                            game.start.players[port_idx].port,
+                            game.frames.id.get(frame_idx).unwrap(),
+                            hit_by_instance
+                        );
+                    }
                 }
                 last_attack=opponent_attack;
             }
@@ -138,9 +144,9 @@ fn is_attack(state: u16) -> bool{
                     //There's definitely a better way of doing this...
     ;
 }
-fn is_grab(state: u16) -> bool{
+*/
+fn is_pummel_or_throw(state: u8) -> bool{
     return 
-        state >= Catch as u16 && state <= ThrowLw as u16
+        state >= 52 && state <= 60
     ;
 }
-*/
