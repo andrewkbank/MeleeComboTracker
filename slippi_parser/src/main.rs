@@ -1,35 +1,18 @@
 use std::{fs, io};
 use peppi::io::slippi::read;
 use peppi::frame::Rollbacks;
-//use arrow2::array::PrimitiveArray;
 
 // `ssbm-data` provides enums for characters, stages, action states, etc.
 // You can just hard-code constants instead, if you prefer.
 use ssbm_data::action_state::Common::{*};
-
 
 //stole a lot from https://github.com/project-slippi/slippi-js/blob/master/src/stats/combos.ts#L7
 
 fn main() {
     let mut r = io::BufReader::new(fs::File::open("tests/test4.slp").unwrap());
     let game = read(&mut r, None).unwrap();
-    /*
-    let metadata = game.metadata;
-    match metadata {
-        Some(map) => {
-            // If Some, print the contents of the HashMap
-            for (key, value) in map.iter() {
-                println!("Key: {}, Value: {:?}", key, value);
-            }
-        }
-        None => {
-            println!("Option is None");
-        }
-    }
-    */
     let stage = game.start.stage;
     let rollbacks = game.frames.rollbacks(Rollbacks::ExceptLast);
-    let mut last_attack: [u8;2] = [0,0];
     let mut start_frame: [usize;2] = [0,0];
     for frame_idx in 1..game.frames.len() {
         if rollbacks[frame_idx]{
@@ -51,7 +34,7 @@ fn main() {
                 if in_hitstun {
                     println!("{} combo grabbed on frame {}", game.start.players[port_idx].port, game.frames.id.get(frame_idx).unwrap());
                     println!("Start position: ({},{}), End position: ({},{})", port_data.leader.post.position.x.get(start_frame[port_idx]).unwrap_or(0.0),port_data.leader.post.position.y.get(start_frame[port_idx]).unwrap_or(0.0),port_data.leader.post.position.x.get(frame_idx).unwrap_or(0.0),port_data.leader.post.position.y.get(frame_idx).unwrap_or(0.0));
-                    println!("{} comboed into grab", last_attack[port_idx]);
+                    println!("{} comboed into grab", game.frames.ports[((port_idx as u8+1)%2) as usize].leader.post.last_attack_landed.get(start_frame[port_idx]).unwrap_or(0));
                     println!("character {} comboed by {}",character,opp_character);
                     println!("Start %: {}, End %: {}",port_data.leader.post.percent.get(start_frame[port_idx]-1).unwrap_or(0.0),port_data.leader.post.percent.get(frame_idx).unwrap_or(0.0));
                     println!("Frames between moves: {}",(frame_idx-start_frame[port_idx]));
@@ -64,28 +47,12 @@ fn main() {
             }else 
             //track hits
             if hit_by_instance != last_hit_by_instance {
-                let mut opponent = port_data.leader.post.last_hit_by.get(frame_idx).unwrap_or(0);
-
-                //special case for opponent=6
-                //https://github.com/project-slippi/slippi-js/pull/71
-                //assuming 2 players
-                if opponent==6 {
-                    //println!("OPPONENT 6 on frame {}",game.frames.id.get(frame_idx).unwrap());
-                    opponent = (port_idx as u8+1)%2;
-                    //println!("Opponent chosen: {}",opponent);
-                }else{
-                    if opponent as usize>port_idx{
-                        opponent=1;
-                    }else{
-                        opponent=0;
-                    }
-                }
-                let opponent_attack= game.frames.ports[opponent as usize].leader.post.last_attack_landed.get(frame_idx).unwrap_or(0);
+                let opponent_attack= game.frames.ports[((port_idx as u8+1)%2) as usize].leader.post.last_attack_landed.get(frame_idx).unwrap_or(0);
                 if !is_pummel_or_throw(opponent_attack) {
                     if in_hitstun{
                         println!("{} comboed on frame {} by instance {}", game.start.players[port_idx].port, game.frames.id.get(frame_idx).unwrap(), hit_by_instance);
                         println!("Start position: ({},{}), End position: ({},{})", port_data.leader.post.position.x.get(start_frame[port_idx]).unwrap_or(0.0),port_data.leader.post.position.y.get(start_frame[port_idx]).unwrap_or(0.0),port_data.leader.post.position.x.get(frame_idx).unwrap_or(0.0),port_data.leader.post.position.y.get(frame_idx).unwrap_or(0.0));
-                        println!("{} comboed into {}",last_attack[port_idx],opponent_attack);
+                        println!("{} comboed into {}",game.frames.ports[((port_idx as u8+1)%2) as usize].leader.post.last_attack_landed.get(start_frame[port_idx]).unwrap_or(0),opponent_attack);
                         println!("character {} comboed by {}",character,opp_character);
                         println!("Start %: {}, End %: {}",port_data.leader.post.percent.get(start_frame[port_idx]-1).unwrap_or(0.0) as u16,port_data.leader.post.percent.get(frame_idx).unwrap_or(0.0) as u16);
                         println!("Frames between moves: {}",(frame_idx-start_frame[port_idx]));
@@ -100,7 +67,6 @@ fn main() {
                         );
                     }
                 }
-                last_attack[port_idx]=opponent_attack;
                 start_frame[port_idx]=frame_idx;
             }
         }
