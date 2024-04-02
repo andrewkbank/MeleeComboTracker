@@ -1,4 +1,6 @@
 use csv::Writer;
+use web_front::csv_to_svg;
+use std::env;
 use std::{fs, io, error::Error,fs::File};
 use std::io::Seek;
 use std::io::Write;
@@ -9,18 +11,35 @@ use peppi::frame::Rollbacks;
 // `ssbm-data` provides enums for characters, stages, action states, etc.
 use ssbm_data::action_state::Common::{*};
 
+mod web_front;
 
 //stole a lot from https://github.com/project-slippi/slippi-js/blob/master/src/stats/combos.ts#L7
 
 
 fn main() -> Result<(), Box<dyn Error>>{
-    let mut zip = zip::ZipArchive::new(File::open("tests/testfolder.zip").unwrap()).unwrap();
+    // Collect arguments and execute.
+    let args: Vec<String> = env::args().collect();
+    for i in 1..args.len(){
+        if args[i] == "--csv-to-svg".to_string() {
+            // TODO: Check if there is another argument to pass to the function.
 
+            // Run the CSV to SVG conversion with the given file and terminate.
+            csv_to_svg("combo.csv".to_string());
+        }
+    }
+
+    // If there are no arguments, just run combo -> csv.
+    write_combo_to_csv()?;
+
+    Ok(())
+}
+
+fn write_combo_to_csv() -> Result<(), Box<dyn Error>>{
+    let mut zip = zip::ZipArchive::new(File::open("tests/testfolder.zip").unwrap()).unwrap();
 
     // Create a new CSV file
     let mut wtr = Writer::from_path("combos.csv")?;
     wtr.write_record(&["Start x","Start y","End x","End y","Start Move","End Move","Comboer Character","Comboee Character","Start %","End %","Frames Between Moves","Stage"])?;
-
 
     // Iterate over each file in the zip archive
     let total_iterations = zip.len();
@@ -109,7 +128,7 @@ fn main() -> Result<(), Box<dyn Error>>{
                         }else{
                             //println!("{} raw grabbed on frame {}", game.start.players[port_idx].port, game.frames.id.get(frame_idx).unwrap());
                         }
-                       
+                    
                     }else
                     //track hits
                     if hit_by_instance > last_hit_by_instance {
@@ -155,10 +174,8 @@ fn main() -> Result<(), Box<dyn Error>>{
         }
     }
 
-
     // Flush and close the writer
     wtr.flush()?;
-
 
     Ok(())
 }
@@ -201,4 +218,3 @@ fn is_pummel_or_throw(state: u8) -> bool{
         (state >= 52 && state <= 60) || state == 0
     ;
 }
-
