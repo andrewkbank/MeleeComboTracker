@@ -61,6 +61,7 @@ fn render_init() -> Result<(), Box<dyn std::error::Error>> {
 pub fn csv_to_svg(path: String) -> Result<(), Box<dyn Error>>{
     // open a CSV file 
     let mut reader = csv::Reader::from_reader(File::open(path).unwrap());
+    //Vector<ComboInfo> 
     for result in reader.records(){
         let record = result?;
         dbg!(record);

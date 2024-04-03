@@ -1,6 +1,7 @@
 use csv::Writer;
 use web_front::csv_to_svg;
 use std::env;
+use std::process::exit;
 use std::{fs, io, error::Error,fs::File};
 use std::io::Seek;
 use std::io::Write;
@@ -21,15 +22,22 @@ fn main() -> Result<(), Box<dyn Error>>{
     let args: Vec<String> = env::args().collect();
     for i in 1..args.len(){
         if args[i] == "--csv-to-svg".to_string() {
-            // TODO: Check if there is another argument to pass to the function.
+            if args.len() - i < 1 { // Not enough arguments.
+                println!("Error: no file path given.");
+                println!("Usage: slippi_parser --csv-to-svg [path/to/file]");
+                exit(1);
+            }
 
             // Run the CSV to SVG conversion with the given file and terminate.
-            csv_to_svg("combo.csv".to_string());
+            csv_to_svg(args[i+1].to_string());
+            let i = i + 1;
         }
     }
 
     // If there are no arguments, just run combo -> csv.
-    write_combo_to_csv()?;
+    if args.len() == 1 {
+        write_combo_to_csv()?;
+    }
 
     Ok(())
 }
@@ -57,7 +65,7 @@ fn write_combo_to_csv() -> Result<(), Box<dyn Error>>{
                 }
             }
             // Extract the file
-            let mut outfile = File::create_new(&outpath).unwrap();
+            let mut outfile = File::create(&outpath).unwrap();
             std::io::copy(&mut file, &mut outfile).unwrap();
             //println!("Extracted {}", outpath.display());
             print!("\r[");
