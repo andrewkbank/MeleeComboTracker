@@ -2,8 +2,23 @@ use csv::Writer;
 use std::{fs, io, error::Error,fs::File};
 use std::io::Seek;
 use std::io::Write;
+use sevenz_rust::{Archive, BlockDecoder, Password};
 use peppi::io::slippi::read;
 use peppi::frame::Rollbacks;
+
+use std::fmt;
+
+// Define a custom error type
+#[derive(Debug)]
+struct CustomError(String);
+
+impl Error for CustomError {}
+
+impl fmt::Display for CustomError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}", self.0)
+    }
+}
 
 
 // `ssbm-data` provides enums for characters, stages, action states, etc.
@@ -14,147 +29,15 @@ use ssbm_data::action_state::Common::{*};
 
 
 fn main() -> Result<(), Box<dyn Error>>{
-    let mut zip = zip::ZipArchive::new(File::open("tests/testfolder.zip").unwrap()).unwrap();
+    let mut zip = zip::ZipArchive::new(File::open("tests/Slippi Dumps.zip").unwrap()).unwrap();
 
 
     // Create a new CSV file
     let mut wtr = Writer::from_path("combos.csv")?;
     wtr.write_record(&["Start x","Start y","End x","End y","Start Move","End Move","Comboer Character","Comboee Character","Start %","End %","Frames Between Moves","Stage"])?;
 
-
-    // Iterate over each file in the zip archive
-    let total_iterations = zip.len();
-    for i in 0..zip.len() {
-        let mut file = zip.by_index(i).unwrap();
-        let outpath = match file.enclosed_name() {
-            Some(path) => path.to_owned(),
-            None => continue,
-        };
-        // Check if the file is a .slp file
-        if outpath.extension().unwrap_or_default() == "slp" {
-            if let Some(p) = outpath.parent() {
-                if !p.exists() {
-                    fs::create_dir_all(p).unwrap();
-                }
-            }
-            // Extract the file
-            let mut outfile = File::create_new(&outpath).unwrap();
-            std::io::copy(&mut file, &mut outfile).unwrap();
-            //println!("Extracted {}", outpath.display());
-            print!("\r[");
-            let progress = (i as f64 / total_iterations as f64 * 50.0) as usize; // Adjust 50 for the desired length of the progress bar
-            for _ in 0..progress {
-                print!("=");
-            }
-            for _ in progress..50 {
-                print!(" ");
-            }
-            print!("] {}%", (i as f64 / total_iterations as f64 * 100.0) as u32);
-            // Flush the output to ensure the progress is visible
-            std::io::stdout().flush().unwrap();
-            outfile.rewind().unwrap();
-
-
-            let mut r = io::BufReader::new(outfile);
-            let game = read(&mut r, None).unwrap();
-            let stage = game.start.stage;
-            let rollbacks = game.frames.rollbacks(Rollbacks::ExceptLast);
-            let mut start_frame: [usize;2] = [0,0];
-            for frame_idx in 1..game.frames.len() {
-                if rollbacks[frame_idx]{
-                    continue;
-                }
-                for (port_idx, port_data) in game.frames.ports.iter().enumerate() {
-                    let state=port_data.leader.post.state.get(frame_idx).unwrap_or(0);
-
-
-                    let last_hit_by_instance = <Option<arrow2::array::PrimitiveArray<u16>> as Clone>::clone(&port_data.leader.post.last_hit_by_instance).unwrap_or_default().get(frame_idx-1).unwrap_or(0);
-                    let hit_by_instance = <Option<arrow2::array::PrimitiveArray<u16>> as Clone>::clone(&port_data.leader.post.last_hit_by_instance).unwrap_or_default().get(frame_idx).unwrap_or(0);
-
-
-                    let last_state=port_data.leader.post.state.get(frame_idx-1).unwrap_or(0);
-                    let in_hitstun= is_damaged(last_state)||is_grabbed(last_state)||is_command_grabbed(last_state);
-                    let character = port_data.leader.post.character.get(frame_idx).unwrap_or(0);
-                    let opp_character = game.frames.ports[((port_idx as u8+1)%2) as usize].leader.post.character.get(frame_idx).unwrap_or(0);
-
-
-                    //track getting grabbed
-                    if is_grabbed(state) && !is_grabbed(port_data.leader.post.state.get(frame_idx-1).unwrap_or(0)){   //grabbed this frame and not the last frame
-                        if in_hitstun {
-                            /*
-                            println!("{} combo grabbed on frame {}", game.start.players[port_idx].port, game.frames.id.get(frame_idx).unwrap());
-                            println!("Start position: ({},{}), End position: ({},{})", port_data.leader.post.position.x.get(start_frame[port_idx]).unwrap_or(0.0),port_data.leader.post.position.y.get(start_frame[port_idx]).unwrap_or(0.0),port_data.leader.post.position.x.get(frame_idx).unwrap_or(0.0),port_data.leader.post.position.y.get(frame_idx).unwrap_or(0.0));
-                            println!("{} comboed into grab", game.frames.ports[((port_idx as u8+1)%2) as usize].leader.post.last_attack_landed.get(start_frame[port_idx]).unwrap_or(0));
-                            println!("character {} comboed by {}",character,opp_character);
-                            println!("Start %: {}, End %: {}",port_data.leader.post.percent.get(start_frame[port_idx]-1).unwrap_or(0.0),port_data.leader.post.percent.get(frame_idx).unwrap_or(0.0));
-                            println!("Frames between moves: {}",(frame_idx-start_frame[port_idx]));
-                            println!("Stage: {}",stage);
-                            println!("---------------");
-                            */
-                            let write_data = [
-                                port_data.leader.post.position.x.get(start_frame[port_idx]).unwrap_or(0.0).to_string(),                                                 //start x
-                                port_data.leader.post.position.y.get(start_frame[port_idx]).unwrap_or(0.0).to_string(),                                                 //start y
-                                port_data.leader.post.position.x.get(frame_idx).unwrap_or(0.0).to_string(),                                                             //end x
-                                port_data.leader.post.position.y.get(frame_idx).unwrap_or(0.0).to_string(),                                                             //end y
-                                game.frames.ports[((port_idx as u8+1)%2) as usize].leader.post.last_attack_landed.get(start_frame[port_idx]).unwrap_or(0).to_string(),  //start move
-                                0.to_string(),                                                                                                                          //end move (grab)
-                                opp_character.to_string(),                                                                                                              //comboer character
-                                character.to_string(),                                                                                                                  //comboee character
-                                port_data.leader.post.percent.get(start_frame[port_idx]-1).unwrap_or(0.0).to_string(),                                                  //start % (before the start move hits)
-                                port_data.leader.post.percent.get(frame_idx).unwrap_or(0.0).to_string(),                                                                //end %
-                                (frame_idx-start_frame[port_idx]).to_string(),                                                                                          //frames between start and end move
-                                stage.to_string()                                                                                                                       //stage
-                            ];
-                            wtr.write_record(&write_data)?;
-                        }else{
-                            //println!("{} raw grabbed on frame {}", game.start.players[port_idx].port, game.frames.id.get(frame_idx).unwrap());
-                        }
-                       
-                    }else
-                    //track hits
-                    if hit_by_instance > last_hit_by_instance {
-                        let opponent_attack= game.frames.ports[((port_idx as u8+1)%2) as usize].leader.post.last_attack_landed.get(frame_idx).unwrap_or(0);
-                        if !is_pummel_or_throw(opponent_attack) {
-                            if in_hitstun{
-                                /*
-                                println!("{} comboed on frame {} by instance {}", game.start.players[port_idx].port, game.frames.id.get(frame_idx).unwrap(), hit_by_instance);
-                                println!("Start position: ({},{}), End position: ({},{})", port_data.leader.post.position.x.get(start_frame[port_idx]).unwrap_or(0.0),port_data.leader.post.position.y.get(start_frame[port_idx]).unwrap_or(0.0),port_data.leader.post.position.x.get(frame_idx).unwrap_or(0.0),port_data.leader.post.position.y.get(frame_idx).unwrap_or(0.0));
-                                println!("{} comboed into {}",game.frames.ports[((port_idx as u8+1)%2) as usize].leader.post.last_attack_landed.get(start_frame[port_idx]).unwrap_or(0),opponent_attack);
-                                println!("character {} comboed by {}",character,opp_character);
-                                println!("Start %: {}, End %: {}",port_data.leader.post.percent.get(start_frame[port_idx]-1).unwrap_or(0.0) as u16,port_data.leader.post.percent.get(frame_idx).unwrap_or(0.0) as u16);
-                                println!("Frames between moves: {}",(frame_idx-start_frame[port_idx]));
-                                println!("Stage: {}",stage);
-                                println!("---------------");
-                                */
-                                let write_data = [
-                                    port_data.leader.post.position.x.get(start_frame[port_idx]).unwrap_or(0.0).to_string(),                                                 //start x
-                                    port_data.leader.post.position.y.get(start_frame[port_idx]).unwrap_or(0.0).to_string(),                                                 //start y
-                                    port_data.leader.post.position.x.get(frame_idx).unwrap_or(0.0).to_string(),                                                             //end x
-                                    port_data.leader.post.position.y.get(frame_idx).unwrap_or(0.0).to_string(),                                                             //end y
-                                    game.frames.ports[((port_idx as u8+1)%2) as usize].leader.post.last_attack_landed.get(start_frame[port_idx]).unwrap_or(0).to_string(),  //start move
-                                    opponent_attack.to_string(),                                                                                                            //end move (grab)
-                                    opp_character.to_string(),                                                                                                              //comboer character
-                                    character.to_string(),                                                                                                                  //comboee character
-                                    port_data.leader.post.percent.get(start_frame[port_idx]-1).unwrap_or(0.0).to_string(),                                                  //start % (before the start move hits)
-                                    port_data.leader.post.percent.get(frame_idx).unwrap_or(0.0).to_string(),                                                                //end %
-                                    (frame_idx-start_frame[port_idx]).to_string(),                                                                                          //frames between start and end move
-                                    stage.to_string()                                                                                                                       //stage
-                                ];
-                                wtr.write_record(&write_data)?;
-                            }else{
-                                //println!("{} raw hit on frame {} by instance {}", game.start.players[port_idx].port, game.frames.id.get(frame_idx).unwrap(), hit_by_instance);
-                            }
-                        }
-                        start_frame[port_idx]=frame_idx;
-                    }
-                }
-            }
-
-
-            fs::remove_file(&outpath).unwrap();
-        }
-    }
-
+    parse_zip_file(zip,&mut wtr);
+    //parse_slp_file(fs::File::open("tests/test8.slp").unwrap(),&mut wtr);
 
     // Flush and close the writer
     wtr.flush()?;
@@ -163,6 +46,216 @@ fn main() -> Result<(), Box<dyn Error>>{
     Ok(())
 }
 
+fn parse_slp_file(mut file: fs::File, wtr: &mut Writer<fs::File>) -> Result<(), Box<dyn Error>>{
+    //filter out super small and super large slp files
+    /*
+    if file.metadata().unwrap().len()<5000 ||file.metadata().unwrap().len()>15000000{
+        return Ok(());
+    }
+    */
+    let mut r = io::BufReader::new(file);
+    let game = read(&mut r, None)?;
+    let stage = game.start.stage;
+    let rollbacks = game.frames.rollbacks(Rollbacks::ExceptLast);
+    let mut start_frame: [usize;2] = [0,0];
+    for frame_idx in 1..game.frames.len() {
+        if rollbacks[frame_idx]{
+            continue;
+        }
+        for (port_idx, port_data) in game.frames.ports.iter().enumerate() {
+            let state=port_data.leader.post.state.get(frame_idx).unwrap_or(0);
+            
+            // Games from more than 7 months ago don't have last_hit_by_instance for some reason, so skip them
+            if <Option<arrow2::array::PrimitiveArray<u16>> as Clone>::clone(&port_data.leader.post.last_hit_by_instance).unwrap_or_default().len()==0{
+                //println!("last_hit_by_instance_length 0: char1: {}, char2: {}",port_data.leader.post.character.get(frame_idx).unwrap_or(0),game.frames.ports[((port_idx as u8+1)%2) as usize].leader.post.character.get(frame_idx).unwrap_or(0));
+                return Err(Box::new(CustomError("tournament not Slippi 3.16 or recent".to_string())));
+            }
+            let last_hit_by_instance = <Option<arrow2::array::PrimitiveArray<u16>> as Clone>::clone(&port_data.leader.post.last_hit_by_instance).unwrap_or_default().get(frame_idx-1).unwrap_or(0);
+            let hit_by_instance = <Option<arrow2::array::PrimitiveArray<u16>> as Clone>::clone(&port_data.leader.post.last_hit_by_instance).unwrap_or_default().get(frame_idx).unwrap_or(0);
+
+
+            let last_state=port_data.leader.post.state.get(frame_idx-1).unwrap_or(0);
+            let in_hitstun= is_damaged(last_state)||is_grabbed(last_state)||is_command_grabbed(last_state);
+            let character = port_data.leader.post.character.get(frame_idx).unwrap_or(0);
+            let opp_character = game.frames.ports[((port_idx as u8+1)%2) as usize].leader.post.character.get(frame_idx).unwrap_or(0);
+
+
+            //track getting grabbed
+            if is_grabbed(state) && !is_grabbed(port_data.leader.post.state.get(frame_idx-1).unwrap_or(0)){   //grabbed this frame and not the last frame
+                if in_hitstun {
+                    /*
+                    println!("{} combo grabbed on frame {}", game.start.players[port_idx].port, game.frames.id.get(frame_idx).unwrap());
+                    println!("Start position: ({},{}), End position: ({},{})", port_data.leader.post.position.x.get(start_frame[port_idx]).unwrap_or(0.0),port_data.leader.post.position.y.get(start_frame[port_idx]).unwrap_or(0.0),port_data.leader.post.position.x.get(frame_idx).unwrap_or(0.0),port_data.leader.post.position.y.get(frame_idx).unwrap_or(0.0));
+                    println!("{} comboed into grab", game.frames.ports[((port_idx as u8+1)%2) as usize].leader.post.last_attack_landed.get(start_frame[port_idx]).unwrap_or(0));
+                    println!("character {} comboed by {}",character,opp_character);
+                    println!("Start %: {}, End %: {}",port_data.leader.post.percent.get(start_frame[port_idx]-1).unwrap_or(0.0),port_data.leader.post.percent.get(frame_idx).unwrap_or(0.0));
+                    println!("Frames between moves: {}",(frame_idx-start_frame[port_idx]));
+                    println!("Stage: {}",stage);
+                    println!("---------------");
+                    */
+                    let write_data = [
+                        port_data.leader.post.position.x.get(start_frame[port_idx]).unwrap_or(0.0).to_string(),                                                 //start x
+                        port_data.leader.post.position.y.get(start_frame[port_idx]).unwrap_or(0.0).to_string(),                                                 //start y
+                        port_data.leader.post.position.x.get(frame_idx).unwrap_or(0.0).to_string(),                                                             //end x
+                        port_data.leader.post.position.y.get(frame_idx).unwrap_or(0.0).to_string(),                                                             //end y
+                        game.frames.ports[((port_idx as u8+1)%2) as usize].leader.post.last_attack_landed.get(start_frame[port_idx]).unwrap_or(0).to_string(),  //start move
+                        0.to_string(),                                                                                                                          //end move (grab)
+                        opp_character.to_string(),                                                                                                              //comboer character
+                        character.to_string(),                                                                                                                  //comboee character
+                        port_data.leader.post.percent.get(start_frame[port_idx]-1).unwrap_or(0.0).to_string(),                                                  //start % (before the start move hits)
+                        port_data.leader.post.percent.get(frame_idx).unwrap_or(0.0).to_string(),                                                                //end %
+                        (frame_idx-start_frame[port_idx]).to_string(),                                                                                          //frames between start and end move
+                        stage.to_string()                                                                                                                       //stage
+                    ];
+                    wtr.write_record(&write_data)?;
+                }else{
+                    //println!("{} raw grabbed on frame {}", game.start.players[port_idx].port, game.frames.id.get(frame_idx).unwrap());
+                }
+               
+            }else
+            //track hits
+            if hit_by_instance > last_hit_by_instance {
+                let opponent_attack= game.frames.ports[((port_idx as u8+1)%2) as usize].leader.post.last_attack_landed.get(frame_idx).unwrap_or(0);
+                if !is_pummel_or_throw(opponent_attack) {
+                    if in_hitstun{
+                        /*
+                        println!("{} comboed on frame {} by instance {}", game.start.players[port_idx].port, game.frames.id.get(frame_idx).unwrap(), hit_by_instance);
+                        println!("Start position: ({},{}), End position: ({},{})", port_data.leader.post.position.x.get(start_frame[port_idx]).unwrap_or(0.0),port_data.leader.post.position.y.get(start_frame[port_idx]).unwrap_or(0.0),port_data.leader.post.position.x.get(frame_idx).unwrap_or(0.0),port_data.leader.post.position.y.get(frame_idx).unwrap_or(0.0));
+                        println!("{} comboed into {}",game.frames.ports[((port_idx as u8+1)%2) as usize].leader.post.last_attack_landed.get(start_frame[port_idx]).unwrap_or(0),opponent_attack);
+                        println!("character {} comboed by {}",character,opp_character);
+                        println!("Start %: {}, End %: {}",port_data.leader.post.percent.get(start_frame[port_idx]-1).unwrap_or(0.0) as u16,port_data.leader.post.percent.get(frame_idx).unwrap_or(0.0) as u16);
+                        println!("Frames between moves: {}",(frame_idx-start_frame[port_idx]));
+                        println!("Stage: {}",stage);
+                        println!("---------------");
+                        */
+                        let write_data = [
+                            port_data.leader.post.position.x.get(start_frame[port_idx]).unwrap_or(0.0).to_string(),                                                 //start x
+                            port_data.leader.post.position.y.get(start_frame[port_idx]).unwrap_or(0.0).to_string(),                                                 //start y
+                            port_data.leader.post.position.x.get(frame_idx).unwrap_or(0.0).to_string(),                                                             //end x
+                            port_data.leader.post.position.y.get(frame_idx).unwrap_or(0.0).to_string(),                                                             //end y
+                            game.frames.ports[((port_idx as u8+1)%2) as usize].leader.post.last_attack_landed.get(start_frame[port_idx]).unwrap_or(0).to_string(),  //start move
+                            opponent_attack.to_string(),                                                                                                            //end move (grab)
+                            opp_character.to_string(),                                                                                                              //comboer character
+                            character.to_string(),                                                                                                                  //comboee character
+                            port_data.leader.post.percent.get(start_frame[port_idx]-1).unwrap_or(0.0).to_string(),                                                  //start % (before the start move hits)
+                            port_data.leader.post.percent.get(frame_idx).unwrap_or(0.0).to_string(),                                                                //end %
+                            (frame_idx-start_frame[port_idx]).to_string(),                                                                                          //frames between start and end move
+                            stage.to_string()                                                                                                                       //stage
+                        ];
+                        wtr.write_record(&write_data)?;
+                    }else{
+                        //println!("{} raw hit on frame {} by instance {}", game.start.players[port_idx].port, game.frames.id.get(frame_idx).unwrap(), hit_by_instance);
+                    }
+                }
+                start_frame[port_idx]=frame_idx;
+            }
+        }
+    }
+
+    Ok(())
+}
+
+fn parse_zip_file(mut zip: zip::ZipArchive<std::fs::File>, wtr: &mut Writer<fs::File>) -> Result<(), Box<dyn Error>>{
+    // Iterate over each file in the zip archive
+    let total_iterations = zip.len();
+    for i in 0..zip.len() {
+        //progress bar
+        print!("\r[");
+        let progress = (i as f64 / total_iterations as f64 * 50.0) as usize; // Adjust 50 for the desired length of the progress bar
+        for _ in 0..progress {
+            print!("=");
+        }
+        for _ in progress..50 {
+            print!(" ");
+        }
+        print!("] {}%", (i as f64 / total_iterations as f64 * 100.0) as u32);
+
+        let mut file = zip.by_index(i).unwrap();
+        let outpath = match file.enclosed_name() {
+            Some(path) => path.to_owned(),
+            None => continue,
+        };
+        // Check if the file is a .slp file
+        if outpath.extension().unwrap_or_default() == "slp" {
+            // Extract the file
+            if std::path::Path::new("read.slp").exists() { 
+                fs::remove_file("read.slp").unwrap();
+            }
+            let mut outfile = File::create_new("read.slp").unwrap();
+            std::io::copy(&mut file, &mut outfile).unwrap();
+            
+            // Flush the output to ensure the progress is visible
+            std::io::stdout().flush().unwrap();
+            outfile.rewind().unwrap();
+
+            parse_slp_file(outfile,wtr);
+        }else if outpath.extension().unwrap_or_default() == "7z" {
+            println!("7z file: {}",outpath.file_name().unwrap().to_str().unwrap());
+            if std::path::Path::new("inner_7z.7z").exists() { 
+                fs::remove_file("inner_7z.7z").unwrap();
+            }
+
+            let mut inner_7z_file = File::create_new("inner_7z.7z").unwrap();
+            std::io::copy(&mut file, &mut inner_7z_file).unwrap();
+
+            // Flush the output to ensure the progress is visible
+            std::io::stdout().flush().unwrap();
+            inner_7z_file.rewind().unwrap();
+
+            parse_7z_file(inner_7z_file,wtr);
+        }else if outpath.extension().unwrap_or_default() == "zip" {
+            println!("zip file: {}",outpath.file_name().unwrap().to_str().unwrap());
+
+            if std::path::Path::new("inner_zip.zip").exists() { 
+                fs::remove_file("inner_zip.zip").unwrap();
+            }
+
+            let mut inner_zip_file = File::create_new("inner_zip.zip").unwrap();
+            std::io::copy(&mut file, &mut inner_zip_file).unwrap();
+
+            // Flush the output to ensure the progress is visible
+            std::io::stdout().flush().unwrap();
+            inner_zip_file.rewind().unwrap();
+
+            let mut next_zip = zip::ZipArchive::new(inner_zip_file).unwrap();
+            
+            parse_zip_file(next_zip,wtr);
+        }
+    }
+
+    Ok(())
+}
+
+fn parse_7z_file(mut file: fs::File,wtr: &mut Writer<fs::File>) -> Result<(), Box<dyn Error>>{
+    let len = file.metadata().unwrap().len();
+    let password = Password::empty();
+    let archive = Archive::read(&mut file, len, password.as_slice()).unwrap();
+    let folder_count = archive.folders.len();
+
+    for folder_index in 0..folder_count {
+        let forder_dec = BlockDecoder::new(folder_index, &archive, password.as_slice(), &mut file);
+
+        forder_dec
+            .for_each_entries(&mut |entry, reader| {
+                if std::path::Path::new(entry.name()).exists() { 
+                    fs::remove_file(entry.name()).unwrap();
+                }
+                sevenz_rust::default_entry_extract_fn(entry, reader, &std::path::PathBuf::from(entry.name()))?;
+                let slp_file = File::open(entry.name()).unwrap();
+                match parse_slp_file(slp_file,wtr){
+                    Ok(()) => fs::remove_file(entry.name()).unwrap(),
+                    Err(err) => {
+                        fs::remove_file(entry.name()).unwrap();
+                        return Ok(false);
+                    },
+                }
+                Ok(true)
+            })
+            .expect("ok");
+    }
+
+    Ok(())
+}
 
 fn is_damaged(state: u16) -> bool{
     return
@@ -187,18 +280,15 @@ fn is_command_grabbed(state: u16) -> bool{
         (state >= CaptureKirbyYoshi as u16 && state <= CaptureLikeLike as u16)
     ;
 }
-/*
-fn is_attack(state: u16) -> bool{
-    return
-        (state >= Attack11 as u16 && state <= LandingAirLw as u16) ||
-        state>=341  //>=341 is character specific things such as specials
-                    //There's definitely a better way of doing this...
-    ;
-}
-*/
+
 fn is_pummel_or_throw(state: u8) -> bool{
     return
         (state >= 52 && state <= 60) || state == 0
     ;
 }
 
+/*
+fn print_type_of<T>(_: &T) {
+    println!("{}", std::any::type_name::<T>())
+}
+*/
