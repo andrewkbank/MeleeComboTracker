@@ -20,18 +20,21 @@ mod web_front;
 fn main() -> Result<(), Box<dyn Error>>{
     // Collect arguments and execute.
     let args: Vec<String> = env::args().collect();
-    for i in 1..args.len(){
-        if args[i] == "--csv-to-svg".to_string() {
-            if args.len() - i < 1 { // Not enough arguments.
+    //for i in 1..args.len(){
+    let mut i = 1;
+    while i < args.len(){
+        if args[i].eq("--csv-to-svg") {
+            if args.len() - i <= 1 { // Not enough arguments.
                 println!("Error: no file path given.");
                 println!("Usage: slippi_parser --csv-to-svg [path/to/file]");
                 exit(1);
             }
 
             // Run the CSV to SVG conversion with the given file and terminate.
-            csv_to_svg(args[i+1].to_string());
-            let i = i + 1;
+            csv_to_svg(args[i+1].to_string())?;
+            i += 1;
         }
+        i += 1;
     }
 
     // If there are no arguments, just run combo -> csv.
