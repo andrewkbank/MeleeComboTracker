@@ -29,16 +29,16 @@ use ssbm_data::action_state::Common::{*};
 
 
 fn main() -> Result<(), Box<dyn Error>>{
-    let mut zip = zip::ZipArchive::new(File::open("tests/Slippi Dumps.zip").unwrap()).unwrap();
-
+    //let mut zip = zip::ZipArchive::new(File::open("tests/Slippi Dumps.zip").unwrap()).unwrap();
+    let mut massive_fucking_file = File::open("tests/ranked-anonymized.7z").unwrap();
 
     // Create a new CSV file
     let mut wtr = Writer::from_path("combos.csv")?;
     wtr.write_record(&["Start x","Start y","End x","End y","Start Move","End Move","Comboer Character","Comboee Character","Start %","End %","Frames Between Moves","Stage"])?;
 
-    parse_zip_file(zip,&mut wtr);
+    //parse_zip_file(zip,&mut wtr);
     //parse_slp_file(fs::File::open("tests/test8.slp").unwrap(),&mut wtr);
-
+    parse_7z_file(massive_fucking_file,&mut wtr);
     // Flush and close the writer
     wtr.flush()?;
 
@@ -231,22 +231,47 @@ fn parse_7z_file(mut file: fs::File,wtr: &mut Writer<fs::File>) -> Result<(), Bo
     let password = Password::empty();
     let archive = Archive::read(&mut file, len, password.as_slice()).unwrap();
     let folder_count = archive.folders.len();
-
     for folder_index in 0..folder_count {
         let forder_dec = BlockDecoder::new(folder_index, &archive, password.as_slice(), &mut file);
-
+        let mut i=0;
+        let total_iterations = forder_dec.entry_count();
+        print!("\x1B[1A\r[");
+        let progress = (folder_index as f64 / folder_count as f64 * 50.0) as usize; // Adjust 50 for the desired length of the progress bar
+        for _ in 0..progress {
+            print!("=");
+        }
+        for _ in progress..50 {
+            print!(" ");
+        }
+        println!("] {}%", (folder_index as f64 / folder_count as f64 * 100.0));
+        std::io::stdout().flush().unwrap();
         forder_dec
             .for_each_entries(&mut |entry, reader| {
+                print!("\r[");
+                let progress = (i as f64 / total_iterations as f64 * 50.0) as usize; // Adjust 50 for the desired length of the progress bar
+                for _ in 0..progress {
+                    print!("=");
+                }
+                for _ in progress..50 {
+                    print!(" ");
+                }
+                print!("] {}% File: {}", (i as f64 / total_iterations as f64 * 100.0) as u32,entry.name());
+                std::io::stdout().flush().unwrap();
+                i+=1;
                 if std::path::Path::new(entry.name()).exists() { 
                     fs::remove_file(entry.name()).unwrap();
                 }
                 sevenz_rust::default_entry_extract_fn(entry, reader, &std::path::PathBuf::from(entry.name()))?;
                 let slp_file = File::open(entry.name()).unwrap();
                 match parse_slp_file(slp_file,wtr){
-                    Ok(()) => fs::remove_file(entry.name()).unwrap(),
+                    Ok(()) => {
+                        fs::remove_file(entry.name()).unwrap();
+                        print!("     processed");
+                    },
                     Err(err) => {
                         fs::remove_file(entry.name()).unwrap();
-                        return Ok(false);
+                        print!(" not processed");
+                        //return Ok(false);
                     },
                 }
                 Ok(true)
