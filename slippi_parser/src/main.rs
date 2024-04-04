@@ -37,7 +37,7 @@ fn main() -> Result<(), Box<dyn Error>>{
     wtr.write_record(&["Start x","Start y","End x","End y","Start Move","End Move","Comboer Character","Comboee Character","Start %","End %","Frames Between Moves","Stage"])?;
 
     //parse_zip_file(zip,&mut wtr);
-    parse_slp_file(fs::File::open("tests/test6.slp").unwrap(),&mut wtr);
+    parse_slp_file(fs::File::open("tests/test7.slp").unwrap(),&mut wtr);
     //parse_7z_file(massive_fucking_file,&mut wtr);
     // Flush and close the writer
     wtr.flush()?;
@@ -55,25 +55,20 @@ fn parse_slp_file(mut file: fs::File, wtr: &mut Writer<fs::File>) -> Result<(), 
     */
     let mut r = io::BufReader::new(file);
     let game = read(&mut r, None)?;
+    if game.start.players.len()!=2{
+        return Ok(());
+    }
     let stage = game.start.stage;
     let rollbacks = game.frames.rollbacks(Rollbacks::ExceptLast);
     let mut start_frame: [usize;2] = [0,0];
+    let mut prevent_multihits: [bool;2] = [true,true];
     for frame_idx in 1..game.frames.len() {
         if rollbacks[frame_idx]{
             continue;
         }
         for (port_idx, port_data) in game.frames.ports.iter().enumerate() {
             let state=port_data.leader.post.state.get(frame_idx).unwrap_or(0);
-            
-            // Games from more than 7 months ago don't have last_hit_by_instance for some reason, so skip them
-            /*
-            if <Option<arrow2::array::PrimitiveArray<u16>> as Clone>::clone(&port_data.leader.post.last_hit_by_instance).unwrap_or_default().len()==0{
-                //println!("last_hit_by_instance_length 0: char1: {}, char2: {}",port_data.leader.post.character.get(frame_idx).unwrap_or(0),game.frames.ports[((port_idx as u8+1)%2) as usize].leader.post.character.get(frame_idx).unwrap_or(0));
-                return Err(Box::new(CustomError("tournament not Slippi 3.16 or recent".to_string())));
-            }
-            let last_hit_by_instance = <Option<arrow2::array::PrimitiveArray<u16>> as Clone>::clone(&port_data.leader.post.last_hit_by_instance).unwrap_or_default().get(frame_idx-1).unwrap_or(0);
-            let hit_by_instance = <Option<arrow2::array::PrimitiveArray<u16>> as Clone>::clone(&port_data.leader.post.last_hit_by_instance).unwrap_or_default().get(frame_idx).unwrap_or(0);
-            */
+
             let last_hitstun_remaining = <Option<arrow2::array::PrimitiveArray<f32>> as Clone>::clone(&port_data.leader.post.misc_as).unwrap_or_default().get(frame_idx-1).unwrap_or(0.0);
             let hitstun_remaining = <Option<arrow2::array::PrimitiveArray<f32>> as Clone>::clone(&port_data.leader.post.misc_as).unwrap_or_default().get(frame_idx).unwrap_or(0.0);
 
@@ -83,6 +78,38 @@ fn parse_slp_file(mut file: fs::File, wtr: &mut Writer<fs::File>) -> Result<(), 
             let opp_character = game.frames.ports[((port_idx as u8+1)%2) as usize].leader.post.character.get(frame_idx).unwrap_or(0);
 
 
+            //figure out if we should reset the multihit flag
+            //reset it if we exit hitstun or if the opponent's state changes (ie: they stop their multihit)
+            let opp_state_age = <Option<arrow2::array::PrimitiveArray<f32>> as Clone>::clone(&game.frames.ports[((port_idx as u8+1)%2) as usize].leader.post.state_age).unwrap_or_default().get(frame_idx).unwrap_or(0.0);
+            let last_opp_state_age = <Option<arrow2::array::PrimitiveArray<f32>> as Clone>::clone(&game.frames.ports[((port_idx as u8+1)%2) as usize].leader.post.state_age).unwrap_or_default().get(frame_idx-1).unwrap_or(0.0);
+            if !prevent_multihits[port_idx] && (!in_hitstun || (opp_state_age < last_opp_state_age && opp_state_age<5.0)){
+                prevent_multihits[port_idx]=true;
+                /*
+                if opp_state_age < last_opp_state_age{
+                    println!("state 1: {}, State 2: {}, state_age: {}, frame {}",
+                    game.frames.ports[((port_idx as u8+1)%2) as usize].leader.post.state.get(frame_idx-2).unwrap_or(0),
+                    game.frames.ports[((port_idx as u8+1)%2) as usize].leader.post.state.get(frame_idx).unwrap_or(0),
+                    opp_state_age,
+                    game.frames.id.get(frame_idx).unwrap()
+                );
+                }else{
+                    println!("hitstun {} ended frame {}",in_hitstun, game.frames.id.get(frame_idx).unwrap());
+                }
+                */
+            }
+            let opponent_attack= game.frames.ports[((port_idx as u8+1)%2) as usize].leader.post.last_attack_landed.get(frame_idx).unwrap_or(0);
+            /*
+            if is_pummel_or_throw(opponent_attack) && opponent_attack != 0{
+                println!("throw: {} on frame {}",opponent_attack,game.frames.id.get(frame_idx).unwrap());
+                if hitstun_remaining > last_hitstun_remaining{
+                    println!("hitstun increase on frame {}",game.frames.id.get(frame_idx).unwrap());
+                }
+                if port_data.leader.post.percent.get(frame_idx-1).unwrap_or(0.0)<port_data.leader.post.percent.get(frame_idx).unwrap_or(0.0){
+                    println!("percent increase on frame {}",game.frames.id.get(frame_idx).unwrap());
+                }
+
+            }
+            */
             //track getting grabbed
             if is_grabbed(state) && !is_grabbed(port_data.leader.post.state.get(frame_idx-1).unwrap_or(0)){   //grabbed this frame and not the last frame
                 if in_hitstun {
@@ -118,14 +145,16 @@ fn parse_slp_file(mut file: fs::File, wtr: &mut Writer<fs::File>) -> Result<(), 
             }else
             //track hits
 
-            //okay, so maybe instead of using hit_by_instance, we can check if last frame 
-            //if hit_by_instance > last_hit_by_instance {
-            if hitstun_remaining > last_hitstun_remaining &&port_data.leader.post.percent.get(frame_idx-1).unwrap_or(0.0)<port_data.leader.post.percent.get(frame_idx).unwrap_or(0.0){
-                let opponent_attack= game.frames.ports[((port_idx as u8+1)%2) as usize].leader.post.last_attack_landed.get(frame_idx).unwrap_or(0);
+            //instead of using hit_by_instance, we can check hits if hitstun increases + percent increases
+            if ((hitstun_remaining > last_hitstun_remaining && port_data.leader.post.percent.get(frame_idx-1).unwrap_or(0.0)<port_data.leader.post.percent.get(frame_idx).unwrap_or(0.0))
+                || (is_throw(opponent_attack) && opp_state_age<30.0 && (hitstun_remaining>last_hitstun_remaining|| port_data.leader.post.percent.get(frame_idx-1).unwrap_or(0.0)<port_data.leader.post.percent.get(frame_idx).unwrap_or(0.0))))
+                && prevent_multihits[port_idx]{
+                //let opponent_attack= game.frames.ports[((port_idx as u8+1)%2) as usize].leader.post.last_attack_landed.get(frame_idx).unwrap_or(0);
                 if !is_pummel_or_throw(opponent_attack) {
                     if in_hitstun{
                         /*
                         println!("{} comboed on frame {}", game.start.players[port_idx].port, game.frames.id.get(frame_idx).unwrap());
+                        //println!("start state: {}, end state: {}",game.frames.ports[((port_idx as u8+1)%2) as usize].leader.post.state.get(start_frame[port_idx]-1).unwrap_or(0),game.frames.ports[((port_idx as u8+1)%2) as usize].leader.post.state.get(frame_idx).unwrap_or(0));
                         println!("Start position: ({},{}), End position: ({},{})", port_data.leader.post.position.x.get(start_frame[port_idx]).unwrap_or(0.0),port_data.leader.post.position.y.get(start_frame[port_idx]).unwrap_or(0.0),port_data.leader.post.position.x.get(frame_idx).unwrap_or(0.0),port_data.leader.post.position.y.get(frame_idx).unwrap_or(0.0));
                         println!("{} comboed into {}",game.frames.ports[((port_idx as u8+1)%2) as usize].leader.post.last_attack_landed.get(start_frame[port_idx]).unwrap_or(0),opponent_attack);
                         println!("character {} comboed by {}",character,opp_character);
@@ -150,9 +179,10 @@ fn parse_slp_file(mut file: fs::File, wtr: &mut Writer<fs::File>) -> Result<(), 
                         ];
                         wtr.write_record(&write_data)?;
                     }else{
-                        //println!("{} raw hit on frame {}", game.start.players[port_idx].port, game.frames.id.get(frame_idx).unwrap());
+                        //println!("{} raw hit on frame {}: attack: {}", game.start.players[port_idx].port, game.frames.id.get(frame_idx).unwrap(),opponent_attack);
                     }
                 }
+                prevent_multihits[port_idx]=false;
                 start_frame[port_idx]=frame_idx;
             }
         }
@@ -317,7 +347,9 @@ fn is_pummel_or_throw(state: u8) -> bool{
         (state >= 52 && state <= 60) || state == 0
     ;
 }
-
+fn is_throw(state:u8) -> bool{
+    return state>=53 && state <= 60;
+}
 /*
 fn print_type_of<T>(_: &T) {
     println!("{}", std::any::type_name::<T>())
