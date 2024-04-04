@@ -1,8 +1,10 @@
 //use plotters::prelude::*;
 //use plotters_canvas::CanvasBackend;
 use std::{
-    borrow::BorrowMut, error::Error, fs::File //io::{prelude::*, BufReader}, net::{TcpListener, TcpStream}, string
+    borrow::{Borrow, BorrowMut}, error::Error, fs::File, //io::{prelude::*, BufReader}, net::{TcpListener, TcpStream}, string
+    collections::HashMap,
 };
+use arrow2::array::new_empty_array;
 use serde::Deserialize;
 use svg::{
     node::element::{
@@ -79,6 +81,8 @@ fn render_init() -> Result<(), Box<dyn std::error::Error>> {
 */
 */
 
+// stage boundaries:https://smashboards.com/threads/stage-blast-zones-via-debug-mode.319898/#post-14213835
+
 // Convert a given CSV file (created by our program) 
 // If we decide to tackle a *massive* volume of replay data all at once, 
 // I/O may become a significant bottleneck.
@@ -92,30 +96,46 @@ pub fn csv_to_svg(file_path: String) -> Result<(), Box<dyn Error>>{
         combo_list.push(record);
     }
     
-    // begin converting the structure to SVG objects
-    //
+    // Begin converting the structure to SVG objects.
     let max_x = 200;
     let max_y = 100;
-    let mut document = Document::new()
-        .set("viewBox", (-max_x, -max_y, max_x, max_y));
 
+    let mut stage_documents: HashMap<u16, Document> = HashMap::new();
+
+    //let combo_num = combo_list.len() as u16;
     for combo in combo_list {
+        // separate combos by stage.
+        if !stage_documents.contains_key(&combo.stage){
+            let document = Document::new()
+                //.set("width", "100%")
+                //.set("preserveAspectRatio", "xMidYMid meet")
+                .set("viewBox", (-max_x, -max_y, max_x, max_y));
+            
+            stage_documents.insert(combo.stage, document);
+        }
+    
+        // For each combo, add a new line from start to end.
         let data = Data::new()
             // TODO: Translate coordinates to relative units.
             .move_to((combo.start_pos_x, combo.start_pos_y))
             .line_to((combo.end_pos_x, combo.end_pos_y))
             .close();
+        
+        // TODO: add arrow glyph at end of line.
 
         let path = Path::new()
             .set("fill", "none")
             .set("stroke", "black")
-            .set("stroke-width", 3)
+            .set("opacity", 0.1)
+            .set("stroke-width", 1)
             .set("d", data);
-
-        document.append(path);
+    
+        stage_documents.get_mut(&combo.stage).unwrap().append(path);
     }
 
-    svg::save("test-image.svg", &document).unwrap();
+    for (stage, doc) in stage_documents {
+        svg::save(format!("test-map-{}.svg", stage), &doc).unwrap();
+    }
     // write the SVG to file
     Ok(())
 }
