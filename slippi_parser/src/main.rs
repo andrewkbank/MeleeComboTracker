@@ -6,21 +6,6 @@ use sevenz_rust::{Archive, BlockDecoder, Password};
 use peppi::io::slippi::read;
 use peppi::frame::Rollbacks;
 
-use std::fmt;
-
-// Define a custom error type
-#[derive(Debug)]
-struct CustomError(String);
-
-impl Error for CustomError {}
-
-impl fmt::Display for CustomError {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{}", self.0)
-    }
-}
-
-
 // `ssbm-data` provides enums for characters, stages, action states, etc.
 use ssbm_data::action_state::Common::{*};
 
@@ -30,15 +15,15 @@ use ssbm_data::action_state::Common::{*};
 
 fn main() -> Result<(), Box<dyn Error>>{
     //let mut zip = zip::ZipArchive::new(File::open("tests/Slippi Dumps.zip").unwrap()).unwrap();
-    //let mut massive_fucking_file = File::open("tests/ranked-anonymized.7z").unwrap();
+    let mut massive_fucking_file = File::open("tests/ranked-anonymized.7z").unwrap();
 
     // Create a new CSV file
     let mut wtr = Writer::from_path("combos.csv")?;
     wtr.write_record(&["Start x","Start y","End x","End y","Start Move","End Move","Comboer Character","Comboee Character","Start %","End %","Frames Between Moves","Stage"])?;
 
     //parse_zip_file(zip,&mut wtr);
-    parse_slp_file(fs::File::open("tests/test7.slp").unwrap(),&mut wtr);
-    //parse_7z_file(massive_fucking_file,&mut wtr);
+    //parse_slp_file(fs::File::open("tests/test10.slp").unwrap(),&mut wtr);
+    parse_7z_file(massive_fucking_file,&mut wtr);
     // Flush and close the writer
     wtr.flush()?;
 
@@ -78,41 +63,23 @@ fn parse_slp_file(mut file: fs::File, wtr: &mut Writer<fs::File>) -> Result<(), 
             let opp_character = game.frames.ports[((port_idx as u8+1)%2) as usize].leader.post.character.get(frame_idx).unwrap_or(0);
 
 
+            let opponent_attack= game.frames.ports[((port_idx as u8+1)%2) as usize].leader.post.last_attack_landed.get(frame_idx).unwrap_or(0);
+
             //figure out if we should reset the multihit flag
             //reset it if we exit hitstun or if the opponent's state changes (ie: they stop their multihit)
             let opp_state_age = <Option<arrow2::array::PrimitiveArray<f32>> as Clone>::clone(&game.frames.ports[((port_idx as u8+1)%2) as usize].leader.post.state_age).unwrap_or_default().get(frame_idx).unwrap_or(0.0);
             let last_opp_state_age = <Option<arrow2::array::PrimitiveArray<f32>> as Clone>::clone(&game.frames.ports[((port_idx as u8+1)%2) as usize].leader.post.state_age).unwrap_or_default().get(frame_idx-1).unwrap_or(0.0);
             if !prevent_multihits[port_idx] && (!in_hitstun || (opp_state_age < last_opp_state_age && opp_state_age<5.0)){
                 prevent_multihits[port_idx]=true;
-                /*
-                if opp_state_age < last_opp_state_age{
-                    println!("state 1: {}, State 2: {}, state_age: {}, frame {}",
-                    game.frames.ports[((port_idx as u8+1)%2) as usize].leader.post.state.get(frame_idx-2).unwrap_or(0),
-                    game.frames.ports[((port_idx as u8+1)%2) as usize].leader.post.state.get(frame_idx).unwrap_or(0),
-                    opp_state_age,
-                    game.frames.id.get(frame_idx).unwrap()
-                );
-                }else{
-                    println!("hitstun {} ended frame {}",in_hitstun, game.frames.id.get(frame_idx).unwrap());
-                }
-                */
             }
-            let opponent_attack= game.frames.ports[((port_idx as u8+1)%2) as usize].leader.post.last_attack_landed.get(frame_idx).unwrap_or(0);
-            /*
-            if is_pummel_or_throw(opponent_attack) && opponent_attack != 0{
-                println!("throw: {} on frame {}",opponent_attack,game.frames.id.get(frame_idx).unwrap());
-                if hitstun_remaining > last_hitstun_remaining{
-                    println!("hitstun increase on frame {}",game.frames.id.get(frame_idx).unwrap());
-                }
-                if port_data.leader.post.percent.get(frame_idx-1).unwrap_or(0.0)<port_data.leader.post.percent.get(frame_idx).unwrap_or(0.0){
-                    println!("percent increase on frame {}",game.frames.id.get(frame_idx).unwrap());
-                }
 
+            //reset start_frame if necessary (necessary for online lag)
+            if !in_hitstun{
+                start_frame[port_idx]=0;
             }
-            */
             //track getting grabbed
             if is_grabbed(state) && !is_grabbed(port_data.leader.post.state.get(frame_idx-1).unwrap_or(0)){   //grabbed this frame and not the last frame
-                if in_hitstun {
+                if in_hitstun && start_frame[port_idx]>0{
                     /*
                     println!("{} combo grabbed on frame {}", game.start.players[port_idx].port, game.frames.id.get(frame_idx).unwrap());
                     println!("Start position: ({},{}), End position: ({},{})", port_data.leader.post.position.x.get(start_frame[port_idx]).unwrap_or(0.0),port_data.leader.post.position.y.get(start_frame[port_idx]).unwrap_or(0.0),port_data.leader.post.position.x.get(frame_idx).unwrap_or(0.0),port_data.leader.post.position.y.get(frame_idx).unwrap_or(0.0));
@@ -138,6 +105,7 @@ fn parse_slp_file(mut file: fs::File, wtr: &mut Writer<fs::File>) -> Result<(), 
                         stage.to_string()                                                                                                                       //stage
                     ];
                     wtr.write_record(&write_data)?;
+                    wtr.flush()?;
                 }else{
                     //println!("{} raw grabbed on frame {}", game.start.players[port_idx].port, game.frames.id.get(frame_idx).unwrap());
                 }
@@ -151,15 +119,14 @@ fn parse_slp_file(mut file: fs::File, wtr: &mut Writer<fs::File>) -> Result<(), 
                 && prevent_multihits[port_idx]{
                 //let opponent_attack= game.frames.ports[((port_idx as u8+1)%2) as usize].leader.post.last_attack_landed.get(frame_idx).unwrap_or(0);
                 if !is_pummel_or_throw(opponent_attack) {
-                    if in_hitstun{
+                    if in_hitstun && start_frame[port_idx]>0{
                         /*
                         println!("{} comboed on frame {}", game.start.players[port_idx].port, game.frames.id.get(frame_idx).unwrap());
-                        //println!("start state: {}, end state: {}",game.frames.ports[((port_idx as u8+1)%2) as usize].leader.post.state.get(start_frame[port_idx]-1).unwrap_or(0),game.frames.ports[((port_idx as u8+1)%2) as usize].leader.post.state.get(frame_idx).unwrap_or(0));
                         println!("Start position: ({},{}), End position: ({},{})", port_data.leader.post.position.x.get(start_frame[port_idx]).unwrap_or(0.0),port_data.leader.post.position.y.get(start_frame[port_idx]).unwrap_or(0.0),port_data.leader.post.position.x.get(frame_idx).unwrap_or(0.0),port_data.leader.post.position.y.get(frame_idx).unwrap_or(0.0));
                         println!("{} comboed into {}",game.frames.ports[((port_idx as u8+1)%2) as usize].leader.post.last_attack_landed.get(start_frame[port_idx]).unwrap_or(0),opponent_attack);
                         println!("character {} comboed by {}",character,opp_character);
                         println!("Start %: {}, End %: {}",port_data.leader.post.percent.get(start_frame[port_idx]-1).unwrap_or(0.0) as u16,port_data.leader.post.percent.get(frame_idx).unwrap_or(0.0) as u16);
-                        println!("Frames between moves: {}",(frame_idx-start_frame[port_idx]));
+                        println!("Frames between moves: {}",(game.frames.id.get(frame_idx).unwrap()-game.frames.id.get(start_frame[port_idx]).unwrap()));
                         println!("Stage: {}",stage);
                         println!("---------------");
                         */
@@ -178,6 +145,7 @@ fn parse_slp_file(mut file: fs::File, wtr: &mut Writer<fs::File>) -> Result<(), 
                             stage.to_string()                                                                                                                       //stage
                         ];
                         wtr.write_record(&write_data)?;
+                        wtr.flush()?;
                     }else{
                         //println!("{} raw hit on frame {}: attack: {}", game.start.players[port_idx].port, game.frames.id.get(frame_idx).unwrap(),opponent_attack);
                     }
