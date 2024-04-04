@@ -30,15 +30,15 @@ use ssbm_data::action_state::Common::{*};
 
 fn main() -> Result<(), Box<dyn Error>>{
     //let mut zip = zip::ZipArchive::new(File::open("tests/Slippi Dumps.zip").unwrap()).unwrap();
-    let mut massive_fucking_file = File::open("tests/ranked-anonymized.7z").unwrap();
+    //let mut massive_fucking_file = File::open("tests/ranked-anonymized.7z").unwrap();
 
     // Create a new CSV file
     let mut wtr = Writer::from_path("combos.csv")?;
     wtr.write_record(&["Start x","Start y","End x","End y","Start Move","End Move","Comboer Character","Comboee Character","Start %","End %","Frames Between Moves","Stage"])?;
 
     //parse_zip_file(zip,&mut wtr);
-    //parse_slp_file(fs::File::open("tests/test8.slp").unwrap(),&mut wtr);
-    parse_7z_file(massive_fucking_file,&mut wtr);
+    parse_slp_file(fs::File::open("tests/test6.slp").unwrap(),&mut wtr);
+    //parse_7z_file(massive_fucking_file,&mut wtr);
     // Flush and close the writer
     wtr.flush()?;
 
@@ -66,13 +66,16 @@ fn parse_slp_file(mut file: fs::File, wtr: &mut Writer<fs::File>) -> Result<(), 
             let state=port_data.leader.post.state.get(frame_idx).unwrap_or(0);
             
             // Games from more than 7 months ago don't have last_hit_by_instance for some reason, so skip them
+            /*
             if <Option<arrow2::array::PrimitiveArray<u16>> as Clone>::clone(&port_data.leader.post.last_hit_by_instance).unwrap_or_default().len()==0{
                 //println!("last_hit_by_instance_length 0: char1: {}, char2: {}",port_data.leader.post.character.get(frame_idx).unwrap_or(0),game.frames.ports[((port_idx as u8+1)%2) as usize].leader.post.character.get(frame_idx).unwrap_or(0));
                 return Err(Box::new(CustomError("tournament not Slippi 3.16 or recent".to_string())));
             }
             let last_hit_by_instance = <Option<arrow2::array::PrimitiveArray<u16>> as Clone>::clone(&port_data.leader.post.last_hit_by_instance).unwrap_or_default().get(frame_idx-1).unwrap_or(0);
             let hit_by_instance = <Option<arrow2::array::PrimitiveArray<u16>> as Clone>::clone(&port_data.leader.post.last_hit_by_instance).unwrap_or_default().get(frame_idx).unwrap_or(0);
-
+            */
+            let last_hitstun_remaining = <Option<arrow2::array::PrimitiveArray<f32>> as Clone>::clone(&port_data.leader.post.misc_as).unwrap_or_default().get(frame_idx-1).unwrap_or(0.0);
+            let hitstun_remaining = <Option<arrow2::array::PrimitiveArray<f32>> as Clone>::clone(&port_data.leader.post.misc_as).unwrap_or_default().get(frame_idx).unwrap_or(0.0);
 
             let last_state=port_data.leader.post.state.get(frame_idx-1).unwrap_or(0);
             let in_hitstun= is_damaged(last_state)||is_grabbed(last_state)||is_command_grabbed(last_state);
@@ -114,12 +117,15 @@ fn parse_slp_file(mut file: fs::File, wtr: &mut Writer<fs::File>) -> Result<(), 
                
             }else
             //track hits
-            if hit_by_instance > last_hit_by_instance {
+
+            //okay, so maybe instead of using hit_by_instance, we can check if last frame 
+            //if hit_by_instance > last_hit_by_instance {
+            if hitstun_remaining > last_hitstun_remaining &&port_data.leader.post.percent.get(frame_idx-1).unwrap_or(0.0)<port_data.leader.post.percent.get(frame_idx).unwrap_or(0.0){
                 let opponent_attack= game.frames.ports[((port_idx as u8+1)%2) as usize].leader.post.last_attack_landed.get(frame_idx).unwrap_or(0);
                 if !is_pummel_or_throw(opponent_attack) {
                     if in_hitstun{
                         /*
-                        println!("{} comboed on frame {} by instance {}", game.start.players[port_idx].port, game.frames.id.get(frame_idx).unwrap(), hit_by_instance);
+                        println!("{} comboed on frame {}", game.start.players[port_idx].port, game.frames.id.get(frame_idx).unwrap());
                         println!("Start position: ({},{}), End position: ({},{})", port_data.leader.post.position.x.get(start_frame[port_idx]).unwrap_or(0.0),port_data.leader.post.position.y.get(start_frame[port_idx]).unwrap_or(0.0),port_data.leader.post.position.x.get(frame_idx).unwrap_or(0.0),port_data.leader.post.position.y.get(frame_idx).unwrap_or(0.0));
                         println!("{} comboed into {}",game.frames.ports[((port_idx as u8+1)%2) as usize].leader.post.last_attack_landed.get(start_frame[port_idx]).unwrap_or(0),opponent_attack);
                         println!("character {} comboed by {}",character,opp_character);
@@ -144,7 +150,7 @@ fn parse_slp_file(mut file: fs::File, wtr: &mut Writer<fs::File>) -> Result<(), 
                         ];
                         wtr.write_record(&write_data)?;
                     }else{
-                        //println!("{} raw hit on frame {} by instance {}", game.start.players[port_idx].port, game.frames.id.get(frame_idx).unwrap(), hit_by_instance);
+                        //println!("{} raw hit on frame {}", game.start.players[port_idx].port, game.frames.id.get(frame_idx).unwrap());
                     }
                 }
                 start_frame[port_idx]=frame_idx;
