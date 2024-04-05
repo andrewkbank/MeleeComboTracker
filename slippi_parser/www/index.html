@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<!-- test HTML for selecting elements. -->
+
+<html>
+  <body>
+    <!-- make server stop complaining about flavicon requests. -->
+    <link rel="icon" href="data:;base64,iVBORw0KGgo=">
+      <!-- load SVG file.-->
+    <div id="svgdiv">
+        <object id="svgobject" data="test-map-3.svg"></object>
+    </div>
+
+    <div id="container">
+      <!-- TODO: programatically pass SVG file to page.-->
+      <script>
+        window.onload = function() {
+          
+          var mySvg = document.getElementById("svgobject").contentDocument.querySelectorAll('svg');
+          var myNodes = mySvg[0].querySelectorAll('.node');
+
+          for( var i = 0; i < myNodes.length; i++ ) {
+            myNodes[i].addEventListener('click', changeStyle );
+          }
+
+          function changeStyle() {
+            this.style.fill="blue";
+          }
+        }
+      </script>
+    </div>
+  </body>
+</html>

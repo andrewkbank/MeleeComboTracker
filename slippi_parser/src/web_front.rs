@@ -133,9 +133,10 @@ pub fn csv_to_svg(file_path: String) -> Result<(), Box<dyn Error>>{
         stage_documents.get_mut(&combo.stage).unwrap().append(path);
     }
 
+    // write the SVG to file
     for (stage, doc) in stage_documents {
         svg::save(format!("test-map-{}.svg", stage), &doc).unwrap();
     }
-    // write the SVG to file
     Ok(())
 }
+
