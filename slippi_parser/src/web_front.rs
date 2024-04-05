@@ -102,23 +102,22 @@ pub fn csv_to_svg(file_path: String) -> Result<(), Box<dyn Error>>{
 
     let mut stage_documents: HashMap<u16, Document> = HashMap::new();
 
-    //let combo_num = combo_list.len() as u16;
-    for combo in combo_list {
+    for combo in 0..combo_list.len() {
         // separate combos by stage.
-        if !stage_documents.contains_key(&combo.stage){
+        if !stage_documents.contains_key(&combo_list[combo].stage){
             let document = Document::new()
                 //.set("width", "100%")
                 //.set("preserveAspectRatio", "xMidYMid meet")
                 .set("viewBox", (-max_x, -max_y, max_x, max_y));
             
-            stage_documents.insert(combo.stage, document);
+            stage_documents.insert(combo_list[combo].stage, document);
         }
     
         // For each combo, add a new line from start to end.
         let data = Data::new()
             // TODO: Translate coordinates to relative units.
-            .move_to((combo.start_pos_x, combo.start_pos_y))
-            .line_to((combo.end_pos_x, combo.end_pos_y))
+            .move_to((combo_list[combo].start_pos_x, combo_list[combo].start_pos_y))
+            .line_to((combo_list[combo].end_pos_x, combo_list[combo].end_pos_y))
             .close();
         
         // TODO: add arrow glyph at end of line.
@@ -128,9 +127,10 @@ pub fn csv_to_svg(file_path: String) -> Result<(), Box<dyn Error>>{
             .set("stroke", "black")
             .set("opacity", 0.1)
             .set("stroke-width", 1)
-            .set("d", data);
+            .set("d", data)
+            .set("id", combo);
     
-        stage_documents.get_mut(&combo.stage).unwrap().append(path);
+        stage_documents.get_mut(&combo_list[combo].stage).unwrap().append(path);
     }
 
     // write the SVG to file
