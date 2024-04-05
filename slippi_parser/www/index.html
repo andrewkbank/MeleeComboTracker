@@ -3,30 +3,55 @@
 
 <html>
   <body>
+      <div id = "info"></div>
+      <script>
+        var parsed;
+      </script>
+      <script type="module">
+        import {parse} from 'https://cdn.jsdelivr.net/npm/@vanillaes/csv@3.0.1/+esm';
+        const csv = `
+        "header1,header2,header3"
+        "aaa,bbb,ccc"
+        "zzz,yyy,xxx"
+        `;
+        parsed = parse(csv);
+      </script>
     <!-- make server stop complaining about flavicon requests. -->
-    <link rel="icon" href="data:;base64,iVBORw0KGgo=">
+    <link rel="icon" href="data:;base64,iVBORw0KGgo="></link>
       <!-- load SVG file.-->
-    <div id="svgdiv">
-        <object id="svgobject" data="test-map-3.svg"></object>
-    </div>
+    <div id = "container">
+      <object id="svgobject" data="test-map-3.svg"></object>
 
-    <div id="container">
       <!-- TODO: programatically pass SVG file to page.-->
       <script>
-        window.onload = function() {
-          
-          var mySvg = document.getElementById("svgobject").contentDocument.querySelectorAll('svg');
-          var myNodes = mySvg[0].querySelectorAll('.node');
+        var svg = document.getElementById("svgobject");
+        svg.addEventListener("load", function(){
+          var svgDoc = svg.contentDocument.querySelectorAll('svg');
+          var nodes = svgDoc[0].querySelectorAll('path');
 
-          for( var i = 0; i < myNodes.length; i++ ) {
-            myNodes[i].addEventListener('click', changeStyle );
+          for( var i = 0; i < nodes.length; i++ ) {
+            nodes[i].addEventListener('click', changeStroke);
+            //TODO: add listener to reset strokecolor.
           }
+          console.log(parsed);
+          var lastPathClicked = null;
 
-          function changeStyle() {
-            this.style.fill="blue";
+          function changeStroke() {
+            this.setAttribute('opacity', 0.30);
+            this.setAttribute('stroke', 'red');
+            if(lastPathClicked)
+            {
+              lastPathClicked.setAttribute('opacity', 0.10);
+              lastPathClicked.setAttribute('stroke', 'black');
+            }
+            lastPathClicked = this;
+            document.getElementById("info").innerText = this.getAttribute("id");
           }
-        }
+        })
       </script>
     </div>
+
   </body>
 </html>
+
+

@@ -1,44 +1,42 @@
-//use plotters::prelude::*;
-//use plotters_canvas::CanvasBackend;
-use std::{
-    borrow::{Borrow, BorrowMut}, error::Error, fs::File, //io::{prelude::*, BufReader}, net::{TcpListener, TcpStream}, string
-    collections::HashMap,
-};
-use arrow2::array::new_empty_array;
 use serde::Deserialize;
+use std::{
+    borrow::{Borrow, BorrowMut},
+    collections::HashMap,
+    error::Error,
+    fs::File, //io::{prelude::*, BufReader}, net::{TcpListener, TcpStream}, string
+};
 use svg::{
-    node::element::{
-        path::Data, Circle, Path
-    }, Document, Node
+    node::element::{path::Data, Circle, Path},
+    Document, Node,
 };
 
 #[derive(Debug, Deserialize)]
 #[allow(dead_code)] // There's a good chance these values will remain unused for a while.
-struct ComboInfo{
+struct ComboInfo {
     #[serde(rename = "Start x")]
-    start_pos_x:f32,
+    start_pos_x: f32,
     #[serde(rename = "Start y")]
-    start_pos_y:f32,
+    start_pos_y: f32,
     #[serde(rename = "End x")]
-    end_pos_x:f32,
+    end_pos_x: f32,
     #[serde(rename = "End y")]
-    end_pos_y:f32,
+    end_pos_y: f32,
     #[serde(rename = "Start Move")]
-    start_move:u16,
+    start_move: u16,
     #[serde(rename = "End Move")]
-    end_move:u16,
+    end_move: u16,
     #[serde(rename = "Comboer Character")]
-    attacking_char:u16,
+    attacking_char: u16,
     #[serde(rename = "Comboee Character")]
-    victim_char:u16,
+    victim_char: u16,
     #[serde(rename = "Start %")]
-    start_percent:f32,
+    start_percent: f32,
     #[serde(rename = "End %")]
-    end_percent:f32,
+    end_percent: f32,
     #[serde(rename = "Frames Between Moves")]
-    between_frames:u16,
+    between_frames: u16,
     #[serde(rename = "Stage")]
-    stage:u16,
+    stage: u16,
 }
 
 // Create a web server to host the graphical frontend.
@@ -64,62 +62,59 @@ fn handle_connection(mut stream: TcpStream){
         .take_while(|line| !line.is_empty())
         .collect();
 
-    
+
     let response = "HTTP/1.1 200 OK\r\n\r\n";
 
     //println!("Request: {:#?}", http_request);
     stream.write_all(response.as_bytes()).unwrap();
 }
-
-/*
-fn render_init() -> Result<(), Box<dyn std::error::Error>> {
-    // Set backend to SVG, start drawing.
-    let mut backend = SVGBackend::new("output.svg", (800, 600));
-    //let mut backend = CanvasBackend::new();
-    Ok(())
-}
-*/
 */
 
 // stage boundaries:https://smashboards.com/threads/stage-blast-zones-via-debug-mode.319898/#post-14213835
 
-// Convert a given CSV file (created by our program) 
-// If we decide to tackle a *massive* volume of replay data all at once, 
+// Convert a given CSV file (created by our program)
+// If we decide to tackle a *massive* volume of replay data all at once,
 // I/O may become a significant bottleneck.
-pub fn csv_to_svg(file_path: String) -> Result<(), Box<dyn Error>>{
-    // open a CSV file 
+pub fn csv_to_svg(file_path: String) -> Result<(), Box<dyn Error>> {
+    // open a CSV file
     let mut reader = csv::Reader::from_reader(File::open(file_path).unwrap());
     let mut combo_list: Vec<ComboInfo> = Vec::new();
-    for result in reader.deserialize(){
+    for result in reader.deserialize() {
         let record: ComboInfo = result?;
         //dbg!(&record);
         combo_list.push(record);
     }
-    
+
     // Begin converting the structure to SVG objects.
-    let max_x = 200;
-    let max_y = 100;
+    let max_x = 400.0;
+    let max_y = 200.0;
 
     let mut stage_documents: HashMap<u16, Document> = HashMap::new();
 
     for combo in 0..combo_list.len() {
         // separate combos by stage.
-        if !stage_documents.contains_key(&combo_list[combo].stage){
+        if !stage_documents.contains_key(&combo_list[combo].stage) {
             let document = Document::new()
-                //.set("width", "100%")
-                //.set("preserveAspectRatio", "xMidYMid meet")
-                .set("viewBox", (-max_x, -max_y, max_x, max_y));
-            
+                .set("width", "100%")
+                .set("preserveAspectRatio", "xMidYMid meet")
+                .set("viewBox", (0, 0, max_x, max_y));
+
             stage_documents.insert(combo_list[combo].stage, document);
         }
-    
+
         // For each combo, add a new line from start to end.
         let data = Data::new()
             // TODO: Translate coordinates to relative units.
-            .move_to((combo_list[combo].start_pos_x, combo_list[combo].start_pos_y))
-            .line_to((combo_list[combo].end_pos_x, combo_list[combo].end_pos_y))
+            .move_to((
+                combo_list[combo].start_pos_x + (max_x / 2.0) as f32,
+                max_y - (combo_list[combo].start_pos_y + (max_y / 2.0) as f32),
+            ))
+            .line_to((
+                combo_list[combo].end_pos_x + (max_x / 2.0) as f32,
+                max_y - (combo_list[combo].end_pos_y + (max_y / 2.0) as f32),
+            ))
             .close();
-        
+
         // TODO: add arrow glyph at end of line.
 
         let path = Path::new()
@@ -129,8 +124,11 @@ pub fn csv_to_svg(file_path: String) -> Result<(), Box<dyn Error>>{
             .set("stroke-width", 1)
             .set("d", data)
             .set("id", combo);
-    
-        stage_documents.get_mut(&combo_list[combo].stage).unwrap().append(path);
+
+        stage_documents
+            .get_mut(&combo_list[combo].stage)
+            .unwrap()
+            .append(path);
     }
 
     // write the SVG to file
@@ -139,4 +137,3 @@ pub fn csv_to_svg(file_path: String) -> Result<(), Box<dyn Error>>{
     }
     Ok(())
 }
-
