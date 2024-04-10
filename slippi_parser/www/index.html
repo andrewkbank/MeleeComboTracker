@@ -3,66 +3,20 @@
 
 <html>
   <body>
-      <div id = "info"></div>
       <script>
       // Declare global variables
       var parsed;
       </script>
-      <script type="module">
-        import {parse} from 'https://cdn.jsdelivr.net/npm/@vanillaes/csv@3.0.1/+esm';
-        
-        // fetch csv blob from local files
-
-        const response = await fetch("combos.csv")
-          .then((combos) => combos.text())
-          .then((text) => {parsed = parse(text);})
-          .catch((exception) => console.error(exception));
-
-        // parse it into a 2d array for the rest of the program
-        console.log(parsed ? "Parse successful." : "Parse failed.");
-      </script>
+      <script type="module", src="./parse_csv.js"></script>
     <!-- make server stop complaining about flavicon requests. -->
     <link rel="icon" href="data:;base64,iVBORw0KGgo="></link>
       <!-- load SVG file.-->
     <div id = "container">
-      <object id="svgobject" data="test-map-3.svg"></object>
-
       <!-- TODO: programatically pass SVG file to page.-->
       <!-- TODO: this should be done with an external page, launched by the Rust program. -->
-      <script>
-        var svg = document.getElementById("svgobject");
-        svg.addEventListener("load", function(){
-          var svgDoc = svg.contentDocument.querySelectorAll('svg');
-          var nodes = svgDoc[0].querySelectorAll('path');
-
-          for( var i = 0; i < nodes.length; i++ ) {
-            nodes[i].addEventListener('click', changeStroke);
-            //TODO: add listener to reset strokecolor.
-          }
-          console.log(parsed);
-          var lastPathClicked = null;
-
-          function changeStroke() {
-            this.setAttribute('opacity', 0.30);
-            this.setAttribute('stroke', 'red');
-            if(lastPathClicked)
-            {
-              lastPathClicked.setAttribute('opacity', 0.10);
-              lastPathClicked.setAttribute('stroke', 'black');
-            }
-            lastPathClicked = this;
-
-            const id = this.getAttribute("id");
-            const start_percent = parsed[id][8];
-            const end_percent = parsed[id][9];
-            const text =
-              "Start percent: " + start_percent + "\n" +
-              "End percent: " + end_percent + "\n";
-
-            document.getElementById("info").innerText = text;
-          }
-        })
-      </script>
+      <object id="svgobject" data="test-map-3.svg"></object>
+      <script src="./launch_svg.js"></script>
+      <div id = "info"></div>
     </div>
 
   </body>
