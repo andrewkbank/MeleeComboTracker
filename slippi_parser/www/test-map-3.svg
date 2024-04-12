@@ -1,4 +1,29 @@
 <svg preserveAspectRatio="xMidYMid meet" pointer-events="all" viewBox="0 0 400 200" width="100%" xmlns="http://www.w3.org/2000/svg">
+<g id='stage' stroke='blue' fill='none' opacity='0.5'>
+  <polyline points="
+            287.75,100
+            287.75,104
+            273.75,115,
+            273.75,117.75
+            260,117.75
+            260,138
+            215,160
+            215,212
+            185,212
+            185,160
+            140,138
+            140,117.75
+            126.25,117.75
+            126.25,115
+            112.25,114
+            112.25,100
+            287.75,100
+            " />
+  <g id='platforms'>
+    <polyline points='145,75 175,75'/>
+    <polyline points='225,75 255,75'/>
+  </g>
+ </g>
 <path d="M202.78256,99.9999 L205.88287,99.9999 z" fill="none" id="36" opacity="0.1" stroke="black" stroke-width="1"/>
 <path d="M235.01624,99.9999 L265.0221,99.9999 z" fill="none" id="37" opacity="0.1" stroke="black" stroke-width="1"/>
 <path d="M277.93286,99.9999 L225.56195,67.301865 z" fill="none" id="38" opacity="0.1" stroke="black" stroke-width="1"/>
