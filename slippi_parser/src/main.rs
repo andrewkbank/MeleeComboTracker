@@ -14,30 +14,40 @@ use ssbm_data::action_state::Common::{*};
 
 
 fn main() -> Result<(), Box<dyn Error>>{
-    //let mut zip = zip::ZipArchive::new(File::open("tests/Slippi Dumps.zip").unwrap()).unwrap();
-    let mut massive_fucking_file = File::open("tests/ranked-anonymized.7z").unwrap();
+    let mut zip = zip::ZipArchive::new(File::open("tests/Slippi Dumps.zip").unwrap()).unwrap();
+    //let mut massive_fucking_file = File::open("tests/ranked-anonymized.7z").unwrap();
 
     // Create a new CSV file
     let mut wtr = Writer::from_path("combos.csv")?;
     wtr.write_record(&["Start x","Start y","End x","End y","Start Move","End Move","Comboer Character","Comboee Character","Start %","End %","Frames Between Moves","Stage"])?;
 
-    //parse_zip_file(zip,&mut wtr);
-    //parse_slp_file(fs::File::open("tests/test10.slp").unwrap(),&mut wtr);
-    parse_7z_file(massive_fucking_file,&mut wtr);
+    let mut move_counts: std::collections::HashMap<(u8,u8),usize> = std::collections::HashMap::new();
+
+    parse_zip_file(zip,&mut wtr,&mut move_counts);
+    //parse_slp_file(fs::File::open("tests/test10.slp").unwrap(),&mut wtr,&mut move_counts);
+    //parse_7z_file(massive_fucking_file,&mut wtr,&mut move_counts);
     // Flush and close the writer
     wtr.flush()?;
 
+    let mut wtr2 = Writer::from_path("totals.csv")?;
+    wtr2.write_record(&["Character","Move","Total Count"])?;
+    // Print the counts
+    for (coord, count) in &move_counts {
+        println!("{:?}: {}", coord, count);
+        let write_data = [
+            coord.0.to_string(),
+            coord.1.to_string(),
+            count.to_string()
+        ];
+        wtr2.write_record(&write_data)?;
+        wtr2.flush()?;
+    }
 
     Ok(())
 }
 
-fn parse_slp_file(mut file: fs::File, wtr: &mut Writer<fs::File>) -> Result<(), Box<dyn Error>>{
+fn parse_slp_file(mut file: fs::File, wtr: &mut Writer<fs::File>, move_counts: &mut std::collections::HashMap<(u8,u8),usize>) -> Result<(), Box<dyn Error>>{
     //filter out super small and super large slp files
-    /*
-    if file.metadata().unwrap().len()<5000 ||file.metadata().unwrap().len()>15000000{
-        return Ok(());
-    }
-    */
     let mut r = io::BufReader::new(file);
     let game = read(&mut r, None)?;
     if game.start.players.len()!=2{
@@ -79,7 +89,7 @@ fn parse_slp_file(mut file: fs::File, wtr: &mut Writer<fs::File>) -> Result<(), 
             }
             //track getting grabbed
             if is_grabbed(state) && !is_grabbed(port_data.leader.post.state.get(frame_idx-1).unwrap_or(0)){   //grabbed this frame and not the last frame
-                if in_hitstun && start_frame[port_idx]>0{
+                if in_hitstun && start_frame[port_idx]>0 && last_hitstun_remaining <0.001{
                     /*
                     println!("{} combo grabbed on frame {}", game.start.players[port_idx].port, game.frames.id.get(frame_idx).unwrap());
                     println!("Start position: ({},{}), End position: ({},{})", port_data.leader.post.position.x.get(start_frame[port_idx]).unwrap_or(0.0),port_data.leader.post.position.y.get(start_frame[port_idx]).unwrap_or(0.0),port_data.leader.post.position.x.get(frame_idx).unwrap_or(0.0),port_data.leader.post.position.y.get(frame_idx).unwrap_or(0.0));
@@ -109,18 +119,28 @@ fn parse_slp_file(mut file: fs::File, wtr: &mut Writer<fs::File>) -> Result<(), 
                 }else{
                     //println!("{} raw grabbed on frame {}", game.start.players[port_idx].port, game.frames.id.get(frame_idx).unwrap());
                 }
-               
+                //let count = move_counts.entry((opp_character,0)).or_insert(0);
+                //*count +=1;
             }else
             //track hits
 
             //instead of using hit_by_instance, we can check hits if hitstun increases + percent increases
             if ((hitstun_remaining > last_hitstun_remaining && port_data.leader.post.percent.get(frame_idx-1).unwrap_or(0.0)<port_data.leader.post.percent.get(frame_idx).unwrap_or(0.0))
-                || (is_throw(opponent_attack) && opp_state_age<30.0 && (hitstun_remaining>last_hitstun_remaining|| port_data.leader.post.percent.get(frame_idx-1).unwrap_or(0.0)<port_data.leader.post.percent.get(frame_idx).unwrap_or(0.0))))
+                || (is_throw(opponent_attack)&& is_throw_state(game.frames.ports[((port_idx as u8+1)%2) as usize].leader.post.state.get(frame_idx).unwrap_or(0)) && opp_state_age<30.0 && (hitstun_remaining>last_hitstun_remaining|| port_data.leader.post.percent.get(frame_idx-1).unwrap_or(0.0)<port_data.leader.post.percent.get(frame_idx).unwrap_or(0.0))))
                 && prevent_multihits[port_idx]{
                 //let opponent_attack= game.frames.ports[((port_idx as u8+1)%2) as usize].leader.post.last_attack_landed.get(frame_idx).unwrap_or(0);
                 if !is_pummel_or_throw(opponent_attack) {
-                    if in_hitstun && start_frame[port_idx]>0{
+                    if in_hitstun && start_frame[port_idx]>0 && last_hitstun_remaining <0.001{
                         /*
+                        if last_hitstun_remaining==0.0{
+                            println!("false positive on frame {}", game.frames.id.get(frame_idx).unwrap());
+                            let mut frameback=1;
+                            println!("frames since hitstun: {}",frameback);
+                            //println!("state: {}, last hitstun state: {}",last_state,port_data.leader.post.state.get(frame_idx-frameback).unwrap_or(0));
+                            println!("{} comboed into {}",game.frames.ports[((port_idx as u8+1)%2) as usize].leader.post.last_attack_landed.get(start_frame[port_idx]).unwrap_or(0),opponent_attack);
+                            println!("character {} comboed by {}",character,opp_character);
+                            println!("---------------");
+                        }
                         println!("{} comboed on frame {}", game.start.players[port_idx].port, game.frames.id.get(frame_idx).unwrap());
                         println!("Start position: ({},{}), End position: ({},{})", port_data.leader.post.position.x.get(start_frame[port_idx]).unwrap_or(0.0),port_data.leader.post.position.y.get(start_frame[port_idx]).unwrap_or(0.0),port_data.leader.post.position.x.get(frame_idx).unwrap_or(0.0),port_data.leader.post.position.y.get(frame_idx).unwrap_or(0.0));
                         println!("{} comboed into {}",game.frames.ports[((port_idx as u8+1)%2) as usize].leader.post.last_attack_landed.get(start_frame[port_idx]).unwrap_or(0),opponent_attack);
@@ -136,7 +156,7 @@ fn parse_slp_file(mut file: fs::File, wtr: &mut Writer<fs::File>) -> Result<(), 
                             port_data.leader.post.position.x.get(frame_idx).unwrap_or(0.0).to_string(),                                                             //end x
                             port_data.leader.post.position.y.get(frame_idx).unwrap_or(0.0).to_string(),                                                             //end y
                             game.frames.ports[((port_idx as u8+1)%2) as usize].leader.post.last_attack_landed.get(start_frame[port_idx]).unwrap_or(0).to_string(),  //start move
-                            opponent_attack.to_string(),                                                                                                            //end move (grab)
+                            opponent_attack.to_string(),                                                                                                            //end move
                             opp_character.to_string(),                                                                                                              //comboer character
                             character.to_string(),                                                                                                                  //comboee character
                             port_data.leader.post.percent.get(start_frame[port_idx]-1).unwrap_or(0.0).to_string(),                                                  //start % (before the start move hits)
@@ -152,6 +172,8 @@ fn parse_slp_file(mut file: fs::File, wtr: &mut Writer<fs::File>) -> Result<(), 
                 }
                 prevent_multihits[port_idx]=false;
                 start_frame[port_idx]=frame_idx;
+                let count = move_counts.entry((opp_character,opponent_attack)).or_insert(0);
+                *count +=1;
             }
         }
     }
@@ -159,7 +181,7 @@ fn parse_slp_file(mut file: fs::File, wtr: &mut Writer<fs::File>) -> Result<(), 
     Ok(())
 }
 
-fn parse_zip_file(mut zip: zip::ZipArchive<std::fs::File>, wtr: &mut Writer<fs::File>) -> Result<(), Box<dyn Error>>{
+fn parse_zip_file(mut zip: zip::ZipArchive<std::fs::File>, wtr: &mut Writer<fs::File>, move_counts: &mut std::collections::HashMap<(u8,u8),usize>) -> Result<(), Box<dyn Error>>{
     // Iterate over each file in the zip archive
     let total_iterations = zip.len();
     for i in 0..zip.len() {
@@ -192,7 +214,7 @@ fn parse_zip_file(mut zip: zip::ZipArchive<std::fs::File>, wtr: &mut Writer<fs::
             std::io::stdout().flush().unwrap();
             outfile.rewind().unwrap();
 
-            parse_slp_file(outfile,wtr);
+            parse_slp_file(outfile,wtr,move_counts);
         }else if outpath.extension().unwrap_or_default() == "7z" {
             println!("7z file: {}",outpath.file_name().unwrap().to_str().unwrap());
             if std::path::Path::new("inner_7z.7z").exists() { 
@@ -206,7 +228,7 @@ fn parse_zip_file(mut zip: zip::ZipArchive<std::fs::File>, wtr: &mut Writer<fs::
             std::io::stdout().flush().unwrap();
             inner_7z_file.rewind().unwrap();
 
-            parse_7z_file(inner_7z_file,wtr);
+            parse_7z_file(inner_7z_file,wtr,move_counts);
         }else if outpath.extension().unwrap_or_default() == "zip" {
             println!("zip file: {}",outpath.file_name().unwrap().to_str().unwrap());
 
@@ -223,14 +245,14 @@ fn parse_zip_file(mut zip: zip::ZipArchive<std::fs::File>, wtr: &mut Writer<fs::
 
             let mut next_zip = zip::ZipArchive::new(inner_zip_file).unwrap();
             
-            parse_zip_file(next_zip,wtr);
+            parse_zip_file(next_zip,wtr,move_counts);
         }
     }
 
     Ok(())
 }
 
-fn parse_7z_file(mut file: fs::File,wtr: &mut Writer<fs::File>) -> Result<(), Box<dyn Error>>{
+fn parse_7z_file(mut file: fs::File,wtr: &mut Writer<fs::File>, move_counts: &mut std::collections::HashMap<(u8,u8),usize>) -> Result<(), Box<dyn Error>>{
     let len = file.metadata().unwrap().len();
     let password = Password::empty();
     let archive = Archive::read(&mut file, len, password.as_slice()).unwrap();
@@ -267,7 +289,7 @@ fn parse_7z_file(mut file: fs::File,wtr: &mut Writer<fs::File>) -> Result<(), Bo
                 }
                 sevenz_rust::default_entry_extract_fn(entry, reader, &std::path::PathBuf::from(entry.name()))?;
                 let slp_file = File::open(entry.name()).unwrap();
-                match parse_slp_file(slp_file,wtr){
+                match parse_slp_file(slp_file,wtr,move_counts){
                     Ok(()) => {
                         fs::remove_file(entry.name()).unwrap();
                         print!("     processed");
@@ -308,6 +330,10 @@ fn is_command_grabbed(state: u16) -> bool{
         (state >= ShoulderedWait as u16 && state <= ThrownMewtwoAir as u16) ||
         (state >= CaptureKirbyYoshi as u16 && state <= CaptureLikeLike as u16)
     ;
+}
+
+fn is_throw_state(state: u16) -> bool{
+    return state >= LightGet as u16 && state<= HeavyThrowLw4 as u16;
 }
 
 fn is_pummel_or_throw(state: u8) -> bool{
