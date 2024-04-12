@@ -2,23 +2,34 @@
 <!-- test HTML for selecting elements. -->
 
 <html>
+  <head>
+    <link rel="icon" href="data:;base64,iVBORw0KGgo="></link>
+    <script src="https://unpkg.com/@panzoom/panzoom@4.5.1/dist/panzoom.min.js"></script>
+  </head>
+  <style>
+  object {
+    pointer-events: none;
+  }
+  </style>
   <body>
       <script>
       // Declare global variables
       var parsed;
+      var panzoom;
       </script>
       <script type="module", src="./parse_csv.js"></script>
     <!-- make server stop complaining about flavicon requests. -->
-    <link rel="icon" href="data:;base64,iVBORw0KGgo="></link>
       <!-- load SVG file.-->
-    <div id = "container">
+    <div id="container">
       <!-- TODO: programatically pass SVG file to page.-->
       <!-- TODO: this should be done with an external page, launched by the Rust program. -->
-      <object id="svgobject" data="test-map-3.svg"></object>
+      <div id="zoomable">
+        <style></style>
+        <object id="svgobject", data="test-map-3.svg"></object>
+      </div>
       <script src="./launch_svg.js"></script>
-      <div id = "info"></div>
     </div>
-
+    <div id = "info"></div>
   </body>
 </html>
 

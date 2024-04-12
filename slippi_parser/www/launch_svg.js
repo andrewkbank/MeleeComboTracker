@@ -12,6 +12,11 @@ svg.addEventListener("load", function(){
   console.log(parsed);
   var lastPathClicked = null;
 
+  panzoom = Panzoom(svg);
+  if(panzoom)
+    console.log("Panzoom successfully initialized.");
+  svg.parentElement.addEventListener('wheel', panzoom.zoomWithWheel);
+
   function changeStroke() {
     this.setAttribute('opacity', 0.30);
     this.setAttribute('stroke', 'red');
