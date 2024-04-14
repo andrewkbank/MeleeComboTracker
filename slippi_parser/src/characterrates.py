@@ -1,4 +1,4 @@
-#This was the script I used to generate the combo rates
+#This was the script I used to generate the character rates
 
 import csv
 attack_ids = [
@@ -149,7 +149,7 @@ with open('combos.csv', 'r') as file:
     for row in reader:
         # Each row is a list containing the values in the CSV row
         #row[4] is the move, row[6] is the character
-        key = (row[4], row[6])
+        key = row[6]
         
         startMove=row[4]
         endMove=row[5]
@@ -169,8 +169,8 @@ with open('combos.csv', 'r') as file:
         
         # Increment the count for the current key
         true_combo_count_dict[key] = true_combo_count_dict.get(key, 0) + 1
-
-hits_count_dict = {}
+    
+    hits_count_dict = {}
 
 # Open the CSV file
 with open('totals.csv', 'r') as file:
@@ -184,25 +184,22 @@ with open('totals.csv', 'r') as file:
     for row in reader:
         # Each row is a list containing the values in the CSV row
         #row[1] is the move, row[0] is the character
-        key = (row[1], row[0])
+        key = row[0]
         
         # Increment the count for the current key
-        hits_count_dict[key] = int(row[2])
-
+        hits_count_dict[key] = hits_count_dict.get(key,0) + int(row[2])
 
 combo_rates = []
 for key in hits_count_dict:
     combo_rate = true_combo_count_dict.get(key, 0)/hits_count_dict[key]
     #print("char: ",character_ids[int(key[1])],",\t\t move: ",attack_ids[int(key[0])],",\t\t rate: ",combo_rate)
-    combo_rates.append((character_ids[int(key[1])],attack_ids[int(key[0])],combo_rate,hits_count_dict[key]))
+    combo_rates.append((character_ids[int(key)],combo_rate,hits_count_dict[key]))
 
-combo_rates = sorted(combo_rates, key=lambda x: x[2],reverse = True)
-#for char,move,combo_rate in combo_rates:
-#    print(f"{character_ids[char]:<{20}} {attack_ids[move]:<{30}}: {combo_rate}")
+combo_rates = sorted(combo_rates, key=lambda x: x[1],reverse = True)
 
 # Write the sorted array to the CSV file
-with open("combo_rates.csv", "w", newline="") as file:
+with open("character_rates.csv", "w", newline="") as file:
     writer = csv.writer(file)
-    writer.writerow(["Character", "Attack","Combo Rate","Total Occurrences"])  # Write header
+    writer.writerow(["Character","Combo Rate","Total Occurrences"])  # Write header
     for item in combo_rates:
         writer.writerow(item)
