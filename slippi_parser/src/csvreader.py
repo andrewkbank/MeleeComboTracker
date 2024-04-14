@@ -109,7 +109,7 @@ character_ids = [
     "Sheik",
     "Ness",
     "Peach",
-    "Popo",
+    "IceClimbers",
     "Nana",
     "Pikachu",
     "Samus",

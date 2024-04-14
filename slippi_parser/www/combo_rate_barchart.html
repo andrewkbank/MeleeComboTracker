@@ -1,0 +1,624 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Combo Rate of Every Move in Melee</title>
+  <!-- Include Chart.js -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <!-- Include Chart.js zoom plugin -->
+  <script src="https://cdn.jsdelivr.net/npm/hammerjs@2.0.8"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/chartjs-plugin-zoom/1.1.1/chartjs-plugin-zoom.min.js"></script>
+  <!-- Include Tippy.js for tooltips -->
+  <script src="https://unpkg.com/@popperjs/core@2.11.6/dist/umd/popper.min.js"></script>
+  <script src="https://unpkg.com/tippy.js@6.3.1/dist/tippy-bundle.umd.js"></script>
+  <script src="https://github.com/chartjs/chartjs-plugin-zoom/releases/download/v1.0.0/chartjs-plugin-zoom.min.js"></script>
+  <style>
+    canvas {
+      -moz-user-select: none;
+      -webkit-user-select: none;
+      -ms-user-select: none;
+    }
+  </style>
+</head>
+<body>
+  <div style="width: 95%;">
+    <canvas id="bar-chart"></canvas>
+  </div>
+
+  <script>
+    // Your CSV data (copy-pasted cuz I'm lazy)
+    const csvData = `Character	Attack	Combo Rate	Total Occurrences
+    Ness	Down Throw	0.129776496	1387
+    DonkeyKong	Cargo Up Throw	0.116410671	4948
+    GameAndWatch	Down Throw	0.104676259	2780
+    DrMario	Jab 1	0.103880285	5747
+    Kirby	Kirby Hat: Falco Neutral Special	0.095238095	105
+    Link	Down Throw	0.091701055	4362
+    CaptainFalcon	Up Throw	0.088009125	27179
+    Fox	Up Throw	0.087138836	154535
+    Samus	Down Throw	0.085498743	3579
+    Luigi	Down Throw	0.085466557	2422
+    Peach	Down Throw	0.083554817	6020
+    Mario	Down Throw	0.082304527	2187
+    GameAndWatch	Jab 1	0.08161679	2573
+    Ness	Down Tilt	0.080676802	4078
+    DonkeyKong	Up Throw	0.08	75
+    DrMario	Down Throw	0.071558206	3857
+    YoungLink	Down Throw	0.066115702	1573
+    CaptainFalcon	Side Special	0.064610866	10215
+    Pichu	Up Throw	0.060903733	509
+    Luigi	Taunt/Item Throw	0.060606061	66
+    Peach	Dair	0.060172872	21056
+    Link	Up Tilt	0.059436913	3836
+    Mewtwo	Side Special	0.058823529	17
+    Ganondorf	Down Throw	0.058228067	11558
+    Sheik	Up Throw	0.056384743	603
+    Mewtwo	Down Special	0.055555556	18
+    Peach	Open Parasol	0.055479639	3659
+    Mario	Dair	0.054983681	3983
+    Pikachu	Up Throw	0.054379977	4395
+    Pichu	Uair	0.052307692	1300
+    Fox	Jab 2	0.052066024	9027
+    Link	Up Throw	0.051112943	2426
+    Sheik	Down Throw	0.050479006	87264
+    Falco	Up Throw	0.049838103	22854
+    Roy	Down Throw	0.049216028	2296
+    IceClimbers	Up Throw	0.049095607	2322
+    DonkeyKong	Uair	0.048544833	8487
+    Ganondorf	Side Special	0.048301887	1325
+    Mario	Jab 1	0.048085106	2350
+    Roy	Up Throw	0.047619048	1386
+    Roy	Down Tilt	0.047464115	5225
+    Yoshi	Up Tilt	0.046808511	1645
+    Luigi	Jab 1	0.046258503	8085
+    GameAndWatch	Up Tilt	0.046113307	1518
+    Marth	Uair	0.045321868	82565
+    Pikachu	Up Special	0.044507962	2449
+    Luigi	Up Tilt	0.04412719	4623
+    Kirby	Jab 2	0.043478261	69
+    Sheik	Dair	0.043383085	10050
+    Falco	Up Tilt	0.043144055	77276
+    Jigglypuff	Up Tilt	0.042919201	5755
+    Pichu	Fair	0.042801556	257
+    YoungLink	Up Tilt	0.042613636	352
+    Falco	Dash Attack	0.042145171	27168
+    Mario	Up Tilt	0.041394336	2295
+    Fox	Rapid Jabs	0.041322314	605
+    Bowser	Side Special	0.041262136	1236
+    Falco	Down Special	0.040807217	320360
+    CaptainFalcon	Up Smash	0.040681173	1057
+    IceClimbers	Dash Attack	0.039520616	7009
+    GameAndWatch	Neutral Special	0.039370079	254
+    CaptainFalcon	Down Throw	0.038982568	59719
+    Luigi	Up Throw	0.038700895	5142
+    DrMario	Dair	0.03869863	5840
+    Jigglypuff	Down Throw	0.038665039	2457
+    Marth	Jab 2	0.038101604	1496
+    Sheik	Side Tilt	0.037962826	60849
+    Fox	Dash Attack	0.037678323	53134
+    Sheik	Jab 2	0.037014836	6673
+    Pikachu	Fair	0.036687984	2971
+    GameAndWatch	Uair	0.036217304	994
+    Fox	Jab 1	0.036013959	51008
+    Link	Down Tilt	0.035532995	394
+    Roy	Up Smash	0.035330261	651
+    Sheik	Dash Attack	0.03525993	43704
+    DrMario	Dash Attack	0.034459907	1509
+    Roy	Uair	0.034375	1920
+    Pikachu	Uair	0.03436189	36232
+    Sheik	Up Tilt	0.033746522	19765
+    Yoshi	Up Throw	0.033670034	297
+    YoungLink	Up Throw	0.033536585	984
+    Ness	Uair	0.033380794	6321
+    Ness	Up Throw	0.033011523	3211
+    Marth	Up Throw	0.032896626	66177
+    Yoshi	Down Throw	0.032868077	2221
+    Jigglypuff	Up Throw	0.032653564	16231
+    GameAndWatch	Down Tilt	0.032333546	4701
+    Samus	Up Throw	0.032303371	3560
+    Mewtwo	Fair	0.032258065	5766
+    Pichu	Down Special	0.032258065	124
+    Samus	Down Tilt	0.032166806	9544
+    IceClimbers	Up Smash	0.032126697	2210
+    Mewtwo	Down Tilt	0.031988097	10754
+    Jigglypuff	Uair	0.031563924	36434
+    Sheik	Taunt/Item Throw	0.031339031	351
+    Link	Uair	0.031325301	7055
+    Sheik	Down Tilt	0.031222834	13804
+    Fox	Uair	0.030983638	145948
+    Zelda	Jab 1	0.030927835	97
+    Peach	Up Throw	0.030880956	14734
+    DonkeyKong	Down Special	0.030612245	98
+    Mewtwo	Up Tilt	0.030601327	4673
+    Yoshi	Uair	0.030441478	19480
+    IceClimbers	Taunt/Item Throw	0.03021148	331
+    Falco	Rapid Jabs	0.029925187	401
+    IceClimbers	Jab 1	0.029759974	12332
+    Kirby	Up Tilt	0.029598309	946
+    Bowser	Dair	0.029411765	510
+    Sheik	Uair	0.029381049	28726
+    YoungLink	Down Special	0.029126214	103
+    Mewtwo	Dash Attack	0.029032258	620
+    Bowser	Uair	0.02826087	460
+    Peach	Uair	0.028076952	13463
+    Peach	Jab 1	0.027776377	19837
+    Mewtwo	Down Throw	0.027586207	2610
+    Falco	Down Tilt	0.027522936	13407
+    Mario	Up Smash	0.027295285	403
+    CaptainFalcon	Down Tilt	0.027167845	2687
+    Ness	Up Tilt	0.026865672	1340
+    GameAndWatch	Up Throw	0.026511135	943
+    Peach	Up Tilt	0.026315789	38
+    Sheik	Rapid Jabs	0.025998143	1077
+    Falco	Jab 2	0.025948104	6012
+    Link	Dash Attack	0.025776603	3026
+    Sheik	Jab 1	0.025396432	24216
+    Pikachu	Up Tilt	0.025162338	1232
+    Ness	Dash Attack	0.025044912	9463
+    Luigi	Down Smash	0.024713636	12746
+    CaptainFalcon	Rapid Jabs	0.024493795	3062
+    DrMario	Up Tilt	0.024350649	3080
+    Falco	Back Throw	0.024063189	10888
+    Sheik	Up Smash	0.024039542	8902
+    YoungLink	Neutral Special	0.023709902	717
+    Luigi	Nair	0.023624143	15027
+    Ganondorf	Up Throw	0.023474178	1491
+    Kirby	Dash Attack	0.023255814	43
+    Fox	Up Tilt	0.023115304	80769
+    YoungLink	Uair	0.022888057	4806
+    Mewtwo	Neutral Special	0.021921737	4881
+    Falco	Jab 1	0.021724239	40876
+    Zelda	Up Throw	0.021582734	139
+    Falco	Nair	0.021490455	103767
+    IceClimbers	Down Throw	0.021427252	32482
+    Bowser	Dash Attack	0.021276596	611
+    Fox	Up Special	0.021167232	28015
+    Fox	Side Special	0.021114165	22923
+    Yoshi	Up Smash	0.020600858	1165
+    IceClimbers	Neutral Special	0.02033061	10526
+    Ness	Taunt/Item Throw	0.02	50
+    Pikachu	Down Throw	0.01979346	1162
+    Bowser	Jab 1	0.019230769	104
+    Ganondorf	Down Tilt	0.019184652	2502
+    Samus	Fair	0.018819855	24336
+    Roy	Dair	0.018505338	1405
+    Mewtwo	Up Throw	0.01814059	3087
+    Fox	Down Tilt	0.018086817	24880
+    Peach	Dash Attack	0.018072545	47088
+    Marth	Down Throw	0.018042496	32756
+    Link	Down Smash	0.017787157	3317
+    Sheik	Side Special	0.017712177	1355
+    Falco	Neutral Special	0.017480612	477100
+    Pikachu	Jab 1	0.017280813	3935
+    Kirby	Rapid Jabs	0.017241379	58
+    Sheik	Neutral Special	0.017049003	59241
+    YoungLink	Up Smash	0.016949153	236
+    Yoshi	Taunt/Item Throw	0.016949153	59
+    Mario	Uair	0.016769336	5844
+    Peach	Side Tilt	0.016763378	1551
+    Roy	Side Special	0.016728926	12314
+    Pichu	Up Tilt	0.016483516	182
+    Peach	Taunt/Item Throw	0.01616051	42016
+    DonkeyKong	Down Throw	0.016129032	62
+    Pikachu	Up Smash	0.016021518	8551
+    Peach	Up Special	0.015880893	10075
+    Fox	Nair	0.015243576	233541
+    YoungLink	Side Special	0.015047371	5383
+    IceClimbers	Jab 2	0.015025042	599
+    Mewtwo	Jab 1	0.015	200
+    Marth	Up Smash	0.014981273	1602
+    Samus	Jab 1	0.014953779	7356
+    Sheik	Up Special	0.014930556	5760
+    DrMario	Uair	0.014894173	11481
+    Marth	Forward Throw	0.014766477	56547
+    Link	Up Smash	0.014752371	949
+    Zelda	Dash Attack	0.014685315	1430
+    DrMario	Up Smash	0.014629049	957
+    Jigglypuff	Taunt/Item Throw	0.014492754	138
+    Link	Neutral Special	0.014492754	345
+    Marth	Side Special	0.014467792	26127
+    Pichu	Jab 1	0.014423077	208
+    GameAndWatch	Up Special	0.014385151	2155
+    Ness	Side Special	0.014146568	4312
+    Falco	Up Special	0.01403775	10543
+    Luigi	Jab 3	0.013888889	2088
+    YoungLink	Jab 2	0.013793103	145
+    Kirby	Jab 1	0.013605442	147
+    DrMario	Jab 2	0.013586957	368
+    Zelda	Up Smash	0.013333333	375
+    Bowser	Down Smash	0.01320132	303
+    Marth	Taunt/Item Throw	0.013059701	536
+    GameAndWatch	Up Smash	0.012987013	77
+    Roy	Fair	0.01297648	2466
+    GameAndWatch	Down Smash	0.012903226	155
+    Fox	Fair	0.012769744	22475
+    Mario	Jab 3	0.01254902	1275
+    Ganondorf	Up Smash	0.012514221	879
+    IceClimbers	Up Tilt	0.012333966	1054
+    Samus	Uair	0.012252821	8243
+    Yoshi	Side Tilt	0.012146893	3540
+    IceClimbers	Uair	0.012146115	22147
+    Bowser	Up Tilt	0.011958146	669
+    Zelda	Down Throw	0.011904762	84
+    Peach	Up Smash	0.01179444	1187
+    DrMario	Neutral Special	0.011673152	13621
+    Yoshi	Neutral Special	0.011258956	977
+    Pichu	Down Throw	0.011111111	90
+    DrMario	Up Throw	0.011046672	3621
+    Pichu	Down Tilt	0.010638298	94
+    Jigglypuff	Jab 1	0.010452962	1722
+    Fox	Up Smash	0.010375072	113445
+    Link	Down Special	0.010309278	97
+    Samus	Down Special	0.010304279	8249
+    Peach	Jab 2	0.010233087	8795
+    Pikachu	Back Throw	0.009993338	3002
+    Falco	Up Smash	0.009979076	6213
+    Ness	Up Smash	0.009708738	309
+    Ganondorf	Taunt/Item Throw	0.009615385	104
+    Peach	Bair	0.009588501	53293
+    YoungLink	Taunt/Item Throw	0.009460548	9936
+    YoungLink	Bair	0.009428403	3394
+    Jigglypuff	Side Special	0.009347383	17652
+    IceClimbers	Down Tilt	0.009118541	329
+    Link	Fair	0.00897776	4901
+    Peach	Side Smash	0.008902077	2022
+    IceClimbers	Nair	0.00880088	1818
+    GameAndWatch	Fair	0.008740421	16704
+    Falco	Uair	0.008701535	42866
+    Link	Jab 2	0.008629442	1970
+    CaptainFalcon	Jab 1	0.008607371	31717
+    Link	Side Special	0.008596868	6514
+    Mario	Bair	0.008497933	4354
+    YoungLink	Fair	0.008441193	1777
+    Pichu	Up Smash	0.008310249	361
+    Link	Bair	0.008181818	3300
+    IceClimbers	Side Tilt	0.008030593	2615
+    Peach	Side Special	0.008	125
+    Pikachu	Dair	0.00794945	4906
+    IceClimbers	Get Up Attack (From Back)	0.007707129	1038
+    CaptainFalcon	Uair	0.007700217	89478
+    Marth	Fair	0.007686542	230793
+    IceClimbers	Side Smash	0.007653812	6794
+    Roy	Bair	0.007462687	804
+    DonkeyKong	Dash Attack	0.007407407	135
+    Mewtwo	Dair	0.007263923	413
+    Falco	Fair	0.007168303	23018
+    IceClimbers	Down Smash	0.007112376	22496
+    Pikachu	Forward Throw	0.007017544	570
+    Fox	Taunt/Item Throw	0.006884682	581
+    Yoshi	Bair	0.006827603	8202
+    Mewtwo	Up Smash	0.006737247	1039
+    Mario	Neutral Special	0.006688963	2691
+    Marth	Up Tilt	0.00659744	60478
+    Sheik	Fair	0.006491076	109535
+    Jigglypuff	Up Smash	0.006361044	4559
+    Link	Taunt/Item Throw	0.006303638	13167
+    Ganondorf	Jab 1	0.006185431	15197
+    Pichu	Dair	0.006134969	163
+    Marth	Dair	0.006068257	45153
+    IceClimbers	Fair	0.006025825	6970
+    Luigi	Neutral Special	0.006008261	2663
+    Luigi	Jab 2	0.0060015	2666
+    IceClimbers	Dair	0.005997001	9338
+    IceClimbers	Grab	0.00591616	5916
+    IceClimbers	Bair	0.005861665	15354
+    DonkeyKong	Nair	0.005861665	853
+    Ness	Jab 1	0.005860806	1365
+    Samus	Up Smash	0.005797101	345
+    Fox	Dair	0.005764654	167226
+    YoungLink	Side Smash	0.005681818	176
+    Roy	Forward Throw	0.00567215	1763
+    Pikachu	Nair	0.005654376	25467
+    Fox	Bair	0.005646666	349941
+    Link	Nair	0.005579432	13263
+    Mario	Nair	0.00551655	3988
+    Luigi	Down Special	0.005457252	6047
+    Yoshi	Down Special	0.00541272	739
+    Jigglypuff	Nair	0.005378859	29932
+    CaptainFalcon	Nair	0.00534908	86370
+    Marth	Dash Attack	0.005280877	15149
+    Bowser	Up Smash	0.005235602	191
+    Jigglypuff	Jab 2	0.005235602	191
+    Roy	Up Tilt	0.005235602	191
+    Jigglypuff	Dair	0.005217939	22231
+    Ness	Fair	0.005193618	24068
+    Falco	Taunt/Item Throw	0.005128205	390
+    Yoshi	Dair	0.004892966	1635
+    Mario	Up Special	0.004830918	1656
+    IceClimbers	Get Up Attack (From Front)	0.004746835	632
+    DonkeyKong	Neutral Special	0.004744958	843
+    Sheik	Bair	0.004695756	96896
+    Peach	Down Tilt	0.004677942	2779
+    Falco	Bair	0.00466053	286019
+    CaptainFalcon	Bair	0.004495916	42483
+    Bowser	Up Special	0.004470939	9394
+    Luigi	Uair	0.00445236	5615
+    Peach	Nair	0.004415116	83803
+    Roy	Neutral Special	0.004379562	685
+    Falco	Dair	0.004352506	365077
+    YoungLink	Get Up Attack (From Back)	0.004291845	233
+    DrMario	Up Special	0.004235177	4014
+    Link	Jab 1	0.004233302	4252
+    GameAndWatch	Dair	0.00418251	5260
+    Kirby	Dair	0.004179728	957
+    Pikachu	Down Tilt	0.004071938	2947
+    IceClimbers	Forward Throw	0.003940658	4314
+    DonkeyKong	Bair	0.003929944	11705
+    Marth	Neutral Special	0.00377915	10849
+    CaptainFalcon	Ledge Get Up Attack 100%+	0.003773585	265
+    YoungLink	Jab 1	0.003773585	795
+    Samus	Side Special	0.003647763	17545
+    Jigglypuff	Fair	0.003610558	88352
+    Yoshi	Nair	0.003542193	46299
+    DonkeyKong	Dair	0.003533569	1415
+    Luigi	Bair	0.003496769	13155
+    IceClimbers	Side Special	0.003494671	5723
+    Mewtwo	Uair	0.003488799	5446
+    Marth	Down Tilt	0.003307081	58662
+    Sheik	Nair	0.003242528	45335
+    Bowser	Down Special	0.003205128	312
+    Pichu	Nair	0.003198976	1563
+    Mewtwo	Bair	0.003190255	3448
+    Kirby	Down Throw	0.003174603	315
+    Pikachu	Neutral Special	0.003143007	1909
+    Marth	Back Throw	0.003119152	4809
+    CaptainFalcon	Dair	0.00310894	47283
+    Samus	Taunt/Item Throw	0.003001501	1999
+    IceClimbers	Back Throw	0.002966381	3034
+    CaptainFalcon	Dash Attack	0.002909393	2406
+    Luigi	Dash Attack	0.00286533	349
+    CaptainFalcon	Jab 2	0.002818086	23775
+    DrMario	Bair	0.002709048	11074
+    CaptainFalcon	Fair	0.002520201	63487
+    GameAndWatch	Dash Attack	0.002457002	407
+    Jigglypuff	Neutral Special	0.002398082	417
+    IceClimbers	Down Special	0.002396645	1669
+    Mario	Fair	0.002382844	1259
+    Yoshi	Up Special	0.00235488	8493
+    CaptainFalcon	Jab 3	0.002347969	17036
+    YoungLink	Nair	0.002255904	14185
+    DrMario	Nair	0.002213124	9037
+    YoungLink	Up Special	0.002208724	1811
+    Yoshi	Jab 2	0.002195734	3188
+    Pikachu	Bair	0.002166634	5077
+    Mario	Up Throw	0.002150538	930
+    Roy	Nair	0.002124646	1412
+    Fox	Neutral Special	0.002072539	13510
+    Sheik	Side Smash	0.00204499	3423
+    Roy	Jab 1	0.001964637	509
+    Sheik	Ledge Get Up Attack	0.001953125	512
+    Samus	Up Tilt	0.001939446	9281
+    Ganondorf	Dair	0.001897533	10540
+    Roy	Up Special	0.001872659	1602
+    Ness	Dair	0.001869625	8023
+    Luigi	Dair	0.001852669	11335
+    Samus	Neutral Special	0.001826008	7667
+    Falco	Get Up Attack (From Front)	0.001824818	3288
+    CaptainFalcon	Up Tilt	0.001824818	548
+    CaptainFalcon	Neutral Special	0.001821494	1647
+    Marth	Nair	0.001814415	69995
+    Samus	Nair	0.001804635	38789
+    DonkeyKong	Down Tilt	0.001792115	558
+    Link	Side Smash	0.001765537	2832
+    CaptainFalcon	Down Special	0.00174216	1148
+    Pichu	Bair	0.001724138	580
+    Peach	Neutral Special	0.001675603	2984
+    Jigglypuff	Side Tilt	0.001602564	624
+    GameAndWatch	Forward Throw	0.00155521	643
+    Kirby	Bair	0.001550388	2580
+    Pikachu	Side Tilt	0.001544004	1943
+    Kirby	Fair	0.001533742	1304
+    Jigglypuff	Bair	0.001513685	120897
+    Fox	Back Throw	0.001460138	10273
+    Ness	Bair	0.001446407	13136
+    CaptainFalcon	Side Tilt	0.001420051	3521
+    Ganondorf	Neutral Special	0.001385042	722
+    Zelda	Bair	0.001362398	2936
+    Zelda	Fair	0.00135257	2218
+    Marth	Bair	0.001332538	28517
+    Yoshi	Jab 1	0.00130719	5355
+    Falco	Forward Throw	0.001306095	29860
+    Pikachu	Down Smash	0.001278159	6259
+    Samus	Dair	0.001265677	8691
+    Samus	Bair	0.001248328	11215
+    Marth	Ledge Get Up Attack	0.001246883	802
+    Zelda	Side Smash	0.001230769	1625
+    Marth	Up Special	0.001178335	24611
+    Ganondorf	Uair	0.001173921	22148
+    Fox	Side Tilt	0.001143293	7872
+    CaptainFalcon	Get Up Attack (From Back)	0.001141553	2628
+    Falco	Side Tilt	0.001129111	20370
+    Samus	Up Special	0.001114976	22422
+    Fox	Forward Throw	0.001065625	11261
+    Falco	Down Smash	0.000983021	22380
+    Mewtwo	Side Tilt	0.000979752	3062
+    Sheik	Get Up Attack (From Front)	0.000971817	1029
+    Ness	Nair	0.000953592	6292
+    Samus	Dash Attack	0.000950652	11571
+    Mewtwo	Nair	0.000834973	16767
+    CaptainFalcon	Get Up Attack (From Front)	0.000827815	1208
+    Luigi	Forward Throw	0.000817661	1223
+    GameAndWatch	Nair	0.000767165	5214
+    Pikachu	Down Special	0.000740741	1350
+    Luigi	Side Tilt	0.000737191	8139
+    Jigglypuff	Back Throw	0.000720981	8322
+    Yoshi	Fair	0.00071262	15436
+    Marth	Jab 1	0.000707965	11300
+    Ganondorf	Side Tilt	0.000699301	4290
+    Bowser	Nair	0.000695894	1437
+    Luigi	Fair	0.000684195	10231
+    DonkeyKong	Fair	0.000639386	1564
+    Falco	Side Special	0.000596002	21812
+    Falco	Ledge Get Up Attack	0.000559597	1787
+    Fox	Side Smash	0.000546329	9152
+    DrMario	Fair	0.000534902	3739
+    YoungLink	Down Smash	0.000487805	2050
+    Bowser	Fair	0.000473485	4224
+    Ganondorf	Bair	0.0004547	17594
+    GameAndWatch	Bair	0.000437158	4575
+    DonkeyKong	Up Special	0.000431313	4637
+    Peach	Fair	0.00041624	31232
+    Peach	Forward Throw	0.000400753	24953
+    Mewtwo	Back Throw	0.000396354	5046
+    Mario	Side Smash	0.000394166	2537
+    DrMario	Down Smash	0.000371839	8068
+    Ness	Up Special	0.00035014	2856
+    Link	Up Special	0.000344709	5802
+    Falco	Side Smash	0.000339257	38319
+    Luigi	Up Smash	0.000333444	2999
+    Ganondorf	Dash Attack	0.000332005	3012
+    Falco	Down Throw	0.000313725	6375
+    Peach	Down Smash	0.000300611	59878
+    Samus	Side Tilt	0.000272777	10998
+    Falco	Get Up Attack (From Back)	0.000258598	7734
+    Sheik	Forward Throw	0.000254842	3924
+    Fox	Down Special	0.000252808	344134
+    Fox	Get Up Attack (From Front)	0.000206825	4835
+    Link	Pummel	0.000188929	5293
+    IceClimbers	Pummel	0.000176075	56794
+    Marth	Down Special	0.000165975	6025
+    Marth	Side Tilt	0.00013986	7150
+    Samus	Down Smash	0.000123931	16138
+    Sheik	Down Smash	9.44E-05	31766
+    Ganondorf	Fair	6.79E-05	14735
+    Marth	Side Smash	1.23E-05	81588
+    `;
+
+    // Parse CSV data
+    const rows = csvData.split('\n').slice(1); // Remove header
+    const data = rows.map(row => {
+      const [character, move, hitRate, attempts] = row.trim().split('	');
+      return { character, move, hitRate: parseFloat(hitRate)*100, attempts: parseInt(attempts) };
+    });
+
+    // Extract labels and data for Chart.js
+    const labels = data.map(entry => `${entry.character} ${entry.move}`);
+    const hitRates = data.map(entry => entry.hitRate);
+
+    // Create canvas context
+    const ctx = document.getElementById('bar-chart').getContext('2d');
+
+    function charNameToColor(data){
+        const colors = [];
+        data.forEach(entry => {
+            if (entry.character === "Mario"||entry.character ==="Ness") {
+                colors.push('#e31a1c'); //red
+            }else if(entry.character ==="Fox"||entry.character ==="DrMario"){
+                colors.push('#cab2d6'); //light purple/blue
+            }else if(entry.character ==="CaptainFalcon"||entry.character ==="Falco"){
+                colors.push('#1f78b4'); //dark blue
+            }else if(entry.character ==="DonkeyKong"||entry.character ==="GameAndWatch"){
+                colors.push('#b15928'); //brown
+            }else if(entry.character ==="Kirby"||entry.character ==="Jigglypuff"||entry.character ==="Peach"){
+                colors.push('#fb9a99'); //pink
+            }else if(entry.character ==="Bowser"||entry.character ==="Luigi"||entry.character ==="Yoshi"){
+                colors.push('#33a02c'); //green
+            }else if(entry.character ==="Link"||entry.character ==="YoungLink"){
+                colors.push('#b2df8a'); //light green
+            }else if(entry.character ==="Sheik"||entry.character ==="IceClimbers"){
+                colors.push('#a6cee3'); //light blue
+            }else if(entry.character ==="Mewtwo"||entry.character ==="Ganondorf"){
+                colors.push('#6a3d9a'); //purple
+            }else if(entry.character ==="Samus"||entry.character ==="Marth"){
+                colors.push('#ff7f00'); //orange
+            }else if(entry.character ==="Roy"||entry.character ==="Zelda"){
+                colors.push('#fdbf6f'); //light orange
+            }else if(entry.character ==="Pikachu"||entry.character ==="Pichu"){
+                colors.push('#ffff99'); //yellow
+            }else {
+                colors.push('rgba(54, 162, 235, 0.6)'); // Default color for others
+            }
+        });
+        return colors;
+    }
+
+    // Create bar chart
+    const barChart = new Chart(ctx, {
+      type: 'bar',
+      data: {
+        labels: labels,
+        datasets: [{
+          label: 'Combo Rate',
+          data: hitRates,
+          backgroundColor: charNameToColor(data),
+          borderColor: charNameToColor(data),
+          borderWidth: 1
+        }]
+      },
+      options: {
+        plugins: {
+            zoom: {
+                zoom: {
+                    wheel: {
+                        enabled: true,
+                    },
+                    pinch: {
+                        enabled: true
+                    },
+                    mode: 'x',
+                }
+            },
+            tooltip: {
+                callbacks: {
+                label: function(context) {
+                    const index = context.dataIndex;
+                    const entry = data[index];
+                    return `${entry.hitRate.toFixed(2)}% combo rate on ${entry.attempts} hits`;
+                }
+                }
+            }
+        },
+        scales: {
+          x: {
+            display: false // Hides the x-axis labels
+          },
+          y: {
+            beginAtZero: true,
+            ticks: {
+              stepSize: 10,
+              callback: function(value) {
+                return value + '%';
+              }
+            },
+            title: {
+                display: true,
+                text: 'Combo Rate (%)'
+            }
+          }
+        }
+      }
+    });
+
+    // Add tooltips using Tippy.js
+    barChart.canvas.addEventListener('mousemove', function(event) {
+      const activePoint = barChart.getElementsAtEventForMode(event, 'nearest', { intersect: true }, false)[0];
+      if (activePoint) {
+        const rect = barChart.canvas.getBoundingClientRect();
+        const { x, y } = activePoint.tooltipPosition;
+        const tooltipContent = barChart.tooltip._body[0].lines[0];
+        tippy(barChart.canvas, {
+          content: tooltipContent,
+          placement: 'top',
+          delay: 100,
+          duration: 0,
+          offset: [0, 10],
+          arrow: false,
+          followCursor: true,
+          popperOptions: {
+            modifiers: [
+              { name: 'offset', options: { offset: [0, 10] } },
+            ],
+          },
+          onHidden: function() {
+            barChart.tooltip._active = [];
+            barChart.tooltip.update(true);
+          }
+        }).popperInstance.reference.getBoundingClientRect = function() {
+          return { x: rect.left + x, y: rect.top + y, width: 0, height: 0 };
+        };
+      }
+    });
+  </script>
+</body>
+</html>
