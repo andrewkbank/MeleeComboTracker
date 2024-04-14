@@ -9,10 +9,6 @@
   <!-- Include Chart.js zoom plugin -->
   <script src="https://cdn.jsdelivr.net/npm/hammerjs@2.0.8"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/chartjs-plugin-zoom/1.1.1/chartjs-plugin-zoom.min.js"></script>
-  <!-- Include Tippy.js for tooltips -->
-  <script src="https://unpkg.com/@popperjs/core@2.11.6/dist/umd/popper.min.js"></script>
-  <script src="https://unpkg.com/tippy.js@6.3.1/dist/tippy-bundle.umd.js"></script>
-  <script src="https://github.com/chartjs/chartjs-plugin-zoom/releases/download/v1.0.0/chartjs-plugin-zoom.min.js"></script>
   <style>
     canvas {
       -moz-user-select: none;
@@ -23,6 +19,12 @@
 </head>
 <body>
   <div style="width: 95%;">
+    <div style="width: 80%;">
+      <!-- Search bar -->
+      <input type="text" id="search-input" placeholder="Enter Character+Move">
+      <br><br>
+      <canvas id="bar-chart"></canvas>
+    </div>
     <canvas id="bar-chart"></canvas>
   </div>
 
@@ -482,8 +484,7 @@
     Samus	Down Smash	0.000123931	16138
     Sheik	Down Smash	9.44E-05	31766
     Ganondorf	Fair	6.79E-05	14735
-    Marth	Side Smash	1.23E-05	81588
-    `;
+    Marth	Side Smash	1.23E-05	81588`;
 
     // Parse CSV data
     const rows = csvData.split('\n').slice(1); // Remove header
@@ -563,7 +564,9 @@
                 callbacks: {
                 label: function(context) {
                     const index = context.dataIndex;
-                    const entry = data[index];
+                    const label = barChart.data.labels[index];
+                    const realIndex = labels.indexOf(label);
+                    const entry = data[realIndex];
                     return `${entry.hitRate.toFixed(2)}% combo rate on ${entry.attempts} hits`;
                 }
                 }
@@ -590,34 +593,25 @@
       }
     });
 
-    // Add tooltips using Tippy.js
-    barChart.canvas.addEventListener('mousemove', function(event) {
-      const activePoint = barChart.getElementsAtEventForMode(event, 'nearest', { intersect: true }, false)[0];
-      if (activePoint) {
-        const rect = barChart.canvas.getBoundingClientRect();
-        const { x, y } = activePoint.tooltipPosition;
-        const tooltipContent = barChart.tooltip._body[0].lines[0];
-        tippy(barChart.canvas, {
-          content: tooltipContent,
-          placement: 'top',
-          delay: 100,
-          duration: 0,
-          offset: [0, 10],
-          arrow: false,
-          followCursor: true,
-          popperOptions: {
-            modifiers: [
-              { name: 'offset', options: { offset: [0, 10] } },
-            ],
-          },
-          onHidden: function() {
-            barChart.tooltip._active = [];
-            barChart.tooltip.update(true);
-          }
-        }).popperInstance.reference.getBoundingClientRect = function() {
-          return { x: rect.left + x, y: rect.top + y, width: 0, height: 0 };
-        };
-      }
+    // Function to filter data based on search input
+    function filterData(searchValue) {
+      const filteredData = data.filter(entry =>
+        (entry.character+" "+entry.move.toLowerCase()).toLowerCase().includes(searchValue.toLowerCase())
+      );
+      const filteredLabels = filteredData.map(entry => `${entry.character} ${entry.move}`);
+      const filteredHitRates = filteredData.map(entry => entry.hitRate);
+      // Update chart data
+      barChart.data.labels = filteredLabels;
+      barChart.data.datasets[0].data = filteredHitRates;
+      const filteredColors = charNameToColor(filteredData);
+      barChart.data.datasets[0].backgroundColor = filteredColors;
+      barChart.data.datasets[0].borderColor = filteredColors;
+      barChart.update();
+    }
+
+    // Add event listener to search input
+    document.getElementById('search-input').addEventListener('input', function(event) {
+      filterData(event.target.value);
     });
   </script>
 </body>
