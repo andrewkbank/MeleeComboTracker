@@ -136,7 +136,7 @@ character_ids = [
 
 # Dictionary to store counts
 true_combo_count_dict = {}
-
+skip = {}
 # Open the CSV file
 with open('combos.csv', 'r') as file:
     # Create a CSV reader object
@@ -154,16 +154,18 @@ with open('combos.csv', 'r') as file:
         startMove=row[4]
         endMove=row[5]
         comboerCharacter=row[6]
-        #if row[4]=='56' and row[6]=='8':
-        #    print(f"Ness Dthrow combos into     {attack_ids[int(row[5])]:<{15}} on {character_ids[int(row[7])]:<{15}} at {int(float(row[8]))}%")
+        #if startMove=='13' and comboerCharacter=='16':
+        #    print(f"Mewtwo nair combos into     {attack_ids[int(endMove)]:<{15}} on {character_ids[int(row[7])]:<{15}} at {int(float(row[8]))}%")
 
-        if startMove=='0' and comboerCharacter!='10':
-            #grab?? (turns out to be Young Link's bombs unless the comboee is icies)
+        if (startMove=='0' or startMove=='52') and comboerCharacter!='10':
+            #grab/pummel?? (turns out to be items unless the comboer is icies)
             #print(f"{character_ids[int(row[6])]:<{15}} Grab (??) combos into     {attack_ids[int(row[5])]:<{15}} on {character_ids[int(row[7])]:<{15}} at {int(float(row[8]))}%")
+            skip[key]=skip.get(key,0)-1
             continue
 
-        if  (startMove=='2' and endMove=='3') or (startMove=='3' and endMove=='4') or (startMove=='4' and endMove=='5') or (startMove=='5' and endMove=='4') or (startMove=='18' and endMove=='18' and comboerCharacter=='5') or (startMove=='19' and endMove=='19' and comboerCharacter=='8') or (startMove=='10' and endMove=='10' and comboerCharacter=='20'):
-            #skip jab combos, Bowser's fire, Ness's fire, and Young Link's Fsmash
+        if  (startMove=='2' and endMove=='2') or (startMove=='3' and endMove=='2') or (startMove=='2' and endMove=='3') or (startMove=='3' and endMove=='4') or (startMove=='4' and endMove=='5') or (startMove=='5' and endMove=='5') or (startMove=='18' and endMove=='18' and comboerCharacter=='5') or (startMove=='19' and endMove=='19' and comboerCharacter=='8') or (startMove=='9' and endMove=='9' and comboerCharacter=='8') or (startMove=='10' and endMove=='10' and comboerCharacter=='20') or (startMove=='21' and endMove=='21' and comboerCharacter=='23') or (startMove=='21' and comboerCharacter=='7') or (startMove=='19' and endMove=='19' and (comboerCharacter=='26' or comboerCharacter=='18')):
+            #skip jab combos, Bowser's fire, Ness's fire, Ness's dtilt, Young Link's Fsmash, Pichu's thunder, Sheik's transform (??), dancing blade
+            skip[key]=skip.get(key,0)-1
             continue
 
         
@@ -187,7 +189,7 @@ with open('totals.csv', 'r') as file:
         key = (row[1], row[0])
         
         # Increment the count for the current key
-        hits_count_dict[key] = int(row[2])
+        hits_count_dict[key] = int(row[2])+skip.get(key, 0)
 
 
 combo_rates = []

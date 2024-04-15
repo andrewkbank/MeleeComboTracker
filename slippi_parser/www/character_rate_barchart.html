@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Combo Rate of Every Move in Melee</title>
+  <!-- Include Chart.js -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <!-- Include Chart.js zoom plugin -->
+  <script src="https://cdn.jsdelivr.net/npm/hammerjs@2.0.8"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/chartjs-plugin-zoom/1.1.1/chartjs-plugin-zoom.min.js"></script>
+  <style>
+    canvas {
+      -moz-user-select: none;
+      -webkit-user-select: none;
+      -ms-user-select: none;
+    }
+  </style>
+</head>
+<body>
+  <div style="width: 95%;">
+    <canvas id="bar-chart"></canvas>
+  </div>
+
+  <script>
+    // Your CSV data (copy-pasted cuz I'm lazy)
+    const csvData = `Character	Combo Rate	Total Occurrences
+        Falco	0.143537099	1994035
+        Fox	0.12663062	1913613
+        DonkeyKong	0.121036593	39707
+        Mewtwo	0.119940783	75654
+        YoungLink	0.116913628	54057
+        Pichu	0.107348243	6260
+        Pikachu	0.099347297	115826
+        Marth	0.091739028	1002376
+        Yoshi	0.087083758	135318
+        Sheik	0.075835716	774635
+        Link	0.075827866	90534
+        GameAndWatch	0.074924089	53681
+        Luigi	0.073032481	119084
+        Roy	0.071368369	40340
+        CaptainFalcon	0.062357968	546971
+        Kirby	0.060721464	9453
+        Mario	0.060701336	43574
+        Ness	0.059761754	94860
+        Jigglypuff	0.058252403	397151
+        Samus	0.045967094	235277
+        Ganondorf	0.045403543	126554
+        DrMario	0.044996432	102297
+        IceClimbers	0.03969586	235944
+        Peach	0.034086062	482954
+        Bowser	0.017285241	28695
+        Zelda	0.015995051	11316`;
+
+    // Parse CSV data
+    const rows = csvData.split('\n').slice(1); // Remove header
+    const data = rows.map(row => {
+      const [character, hitRate, attempts] = row.trim().split('	');
+      return { character, hitRate: parseFloat(hitRate)*100, attempts: parseInt(attempts) };
+    });
+
+    // Extract labels and data for Chart.js
+    const labels = data.map(entry => entry.character);
+    const hitRates = data.map(entry => entry.hitRate);
+
+    // Create canvas context
+    const ctx = document.getElementById('bar-chart').getContext('2d');
+
+    function charNameToColor(data){
+        const colors = [];
+        data.forEach(entry => {
+            if (entry.character === "Mario"||entry.character ==="Ness") {
+                colors.push('#e31a1c'); //red
+            }else if(entry.character ==="Fox"||entry.character ==="DrMario"){
+                colors.push('#cab2d6'); //light purple/blue
+            }else if(entry.character ==="CaptainFalcon"||entry.character ==="Falco"){
+                colors.push('#1f78b4'); //dark blue
+            }else if(entry.character ==="DonkeyKong"||entry.character ==="GameAndWatch"){
+                colors.push('#b15928'); //brown
+            }else if(entry.character ==="Kirby"||entry.character ==="Jigglypuff"||entry.character ==="Peach"){
+                colors.push('#fb9a99'); //pink
+            }else if(entry.character ==="Bowser"||entry.character ==="Luigi"||entry.character ==="Yoshi"){
+                colors.push('#33a02c'); //green
+            }else if(entry.character ==="Link"||entry.character ==="YoungLink"){
+                colors.push('#b2df8a'); //light green
+            }else if(entry.character ==="Sheik"||entry.character ==="IceClimbers"){
+                colors.push('#a6cee3'); //light blue
+            }else if(entry.character ==="Mewtwo"||entry.character ==="Ganondorf"){
+                colors.push('#6a3d9a'); //purple
+            }else if(entry.character ==="Samus"||entry.character ==="Marth"){
+                colors.push('#ff7f00'); //orange
+            }else if(entry.character ==="Roy"||entry.character ==="Zelda"){
+                colors.push('#fdbf6f'); //light orange
+            }else if(entry.character ==="Pikachu"||entry.character ==="Pichu"){
+                colors.push('#ffff99'); //yellow
+            }else {
+                colors.push('rgba(54, 162, 235, 0.6)'); // Default color for others
+            }
+        });
+        return colors;
+    }
+
+    // Create bar chart
+    const barChart = new Chart(ctx, {
+      type: 'bar',
+      data: {
+        labels: labels,
+        datasets: [{
+          label: 'Combo Rate',
+          data: hitRates,
+          backgroundColor: charNameToColor(data),
+          borderColor: charNameToColor(data),
+          borderWidth: 1
+        }]
+      },
+      options: {
+        plugins: {
+            zoom: {
+                zoom: {
+                    wheel: {
+                        enabled: true,
+                    },
+                    pinch: {
+                        enabled: true
+                    },
+                    mode: 'x',
+                }
+            },
+            tooltip: {
+                callbacks: {
+                label: function(context) {
+                    const index = context.dataIndex;
+                    const entry = data[index];
+                    return `${entry.hitRate.toFixed(2)}% combo rate on ${entry.attempts} hits`;
+                }
+                }
+            }
+        },
+        scales: {
+            /*
+          x: {
+            display: false // Hides the x-axis labels
+          },
+          */
+          y: {
+            beginAtZero: true,
+            ticks: {
+              stepSize: 10,
+              callback: function(value) {
+                return value + '%';
+              }
+            },
+            title: {
+                display: true,
+                text: 'Combo Rate (%)'
+            }
+          }
+        }
+      }
+    });
+  </script>
+</body>
+</html>

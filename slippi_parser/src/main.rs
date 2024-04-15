@@ -14,8 +14,8 @@ use ssbm_data::action_state::Common::{*};
 
 
 fn main() -> Result<(), Box<dyn Error>>{
-    let mut zip = zip::ZipArchive::new(File::open("tests/Slippi Dumps.zip").unwrap()).unwrap();
-    //let mut massive_fucking_file = File::open("tests/ranked-anonymized.7z").unwrap();
+    //let mut zip = zip::ZipArchive::new(File::open("tests/Slippi Dumps.zip").unwrap()).unwrap();
+    let mut massive_fucking_file = File::open("tests/ranked-anonymized.7z").unwrap();
 
     // Create a new CSV file
     let mut wtr = Writer::from_path("combos.csv")?;
@@ -23,9 +23,9 @@ fn main() -> Result<(), Box<dyn Error>>{
 
     let mut move_counts: std::collections::HashMap<(u8,u8),usize> = std::collections::HashMap::new();
 
-    parse_zip_file(zip,&mut wtr,&mut move_counts);
-    //parse_slp_file(fs::File::open("tests/test10.slp").unwrap(),&mut wtr,&mut move_counts);
-    //parse_7z_file(massive_fucking_file,&mut wtr,&mut move_counts);
+    //parse_zip_file(zip,&mut wtr,&mut move_counts);
+    //parse_slp_file(fs::File::open("tests/test1.slp").unwrap(),&mut wtr,&mut move_counts);
+    parse_7z_file(massive_fucking_file,&mut wtr,&mut move_counts);
     // Flush and close the writer
     wtr.flush()?;
 
@@ -33,7 +33,7 @@ fn main() -> Result<(), Box<dyn Error>>{
     wtr2.write_record(&["Character","Move","Total Count"])?;
     // Print the counts
     for (coord, count) in &move_counts {
-        println!("{:?}: {}", coord, count);
+        //println!("{:?}: {}", coord, count);
         let write_data = [
             coord.0.to_string(),
             coord.1.to_string(),
@@ -42,7 +42,6 @@ fn main() -> Result<(), Box<dyn Error>>{
         wtr2.write_record(&write_data)?;
         wtr2.flush()?;
     }
-
     Ok(())
 }
 
@@ -130,9 +129,9 @@ fn parse_slp_file(mut file: fs::File, wtr: &mut Writer<fs::File>, move_counts: &
                 && prevent_multihits[port_idx]{
                 //let opponent_attack= game.frames.ports[((port_idx as u8+1)%2) as usize].leader.post.last_attack_landed.get(frame_idx).unwrap_or(0);
                 if !is_pummel_or_throw(opponent_attack) {
-                    if in_hitstun && start_frame[port_idx]>0 && last_hitstun_remaining <0.001{
+                    if in_hitstun && start_frame[port_idx]>0 && last_hitstun_remaining > 0.001{
                         /*
-                        if last_hitstun_remaining==0.0{
+                        if last_hitstun_remaining<0.001{
                             println!("false positive on frame {}", game.frames.id.get(frame_idx).unwrap());
                             let mut frameback=1;
                             println!("frames since hitstun: {}",frameback);
