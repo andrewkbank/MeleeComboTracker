@@ -35,7 +35,8 @@ svg.addEventListener("load", function(){
 
   for( var i = 0; i < nodes.length; i++ ) {
     nodes[i].addEventListener('click', changeStroke);
-    //TODO: add listener to reset strokecolor.
+    // Set invisible to start.
+    nodes[i].setAttribute('display','none');
   }
   console.log(parsed);
   var lastPathClicked = null;
@@ -60,8 +61,49 @@ svg.addEventListener("load", function(){
     if(keyName === 'ArrowDown')
       panzoom.pan(0, -10, {relative:true});
   });
+
+  //Add checkboxes to filter.
+  const filterContainer = document.getElementById('filter-container');
+  var id = 0;
+  characters.forEach(element => {
+    var checkbox = document.createElement('input');
+    checkbox.type = 'checkbox';
+    checkbox.name = id;
+    checkbox.id = id;
+    checkbox.value = 'no';
+
+    var label = document.createElement('label');
+    label.htmlFor = id;
+    label.appendChild(document.createTextNode(element)); 
+    label.appendChild(document.createElement('br')); 
+
+    filterContainer.appendChild(checkbox);
+    filterContainer.appendChild(label);
+    checkbox.addEventListener('change', function(){
+  console.log(this.checked);
+    if(!parsed)
+      return;
+    // Go through all the paths and toggle based on this checkbox's setting.
+    nodes.forEach(path => {
+      if(parsed[path.id][6] === this.id)
+        path.setAttribute('display', (this.checked ? 'inline':'none'));
+    });
+    });
+    id += 1;
+  });
+
+  const filterCollapsable = document.getElementById('filter-collapsable');
+  filterCollapsable.addEventListener('click', function(){
+    this.classList.toggle('active');
+    var content = this.nextElementSibling;
+    if(content.style.display === "block")
+      content.style.display = 'none';
+    else
+      content.style.display = 'block';
+    });
+
   function changeStroke() {
-    this.setAttribute('opacity', 0.30);
+    this.setAttribute('opacity', 0.90);
     this.setAttribute('stroke', 'red');
     if(lastPathClicked)
     {
