@@ -1,5 +1,4 @@
 Character,Attack,Combo Rate,Total Occurrences
-Jigglypuff,Up Special,0.5,2
 Jigglypuff,Up Throw,0.4767420368430781,16231
 Samus,Up Throw,0.4648876404494382,3560
 DonkeyKong,Cargo Up Throw,0.4549312853678254,4948
@@ -133,7 +132,6 @@ Peach,Up Tilt,0.10526315789473684,38
 Yoshi,Side Tilt,0.10508474576271186,3540
 YoungLink,Side Special,0.10421697937952815,5383
 GameAndWatch,Dair,0.1032319391634981,5260
-Link,Side Smash,0.10310734463276836,2832
 Link,Dash Attack,0.10310641110376735,3026
 Roy,Dash Attack,0.10069444444444445,288
 Sheik,Uair,0.10050128803174824,28726
@@ -410,6 +408,7 @@ Mario,Neutral Special,0.0037160906726124115,2691
 Pikachu,Down Special,0.003703703703703704,1350
 Zelda,Fair,0.0036068530207394047,2218
 Samus,Up Special,0.003567924360003568,22422
+Link,Side Smash,0.003530796390741467,2549
 Samus,Taunt/Item Throw,0.003501750875437719,1999
 Link,Jab 3,0.0033003300330033004,303
 Mario,Jab 3,0.003137254901960784,1275
@@ -718,6 +717,7 @@ Mario,Down Special,0.0,15
 Mario,Get Up Attack (From Back),0.0,63
 DonkeyKong,Get Up Attack (From Front),0.0,125
 Marth,Ledge Get Up Attack 100%+,0.0,183
+Jigglypuff,Up Special,0.0,1
 Pichu,Back Throw,0.0,194
 Peach,Down Special,0.0,10
 Kirby,Side Smash,0.0,82

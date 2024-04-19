@@ -163,8 +163,8 @@ with open('combos.csv', 'r') as file:
             skip[(row[4], row[6])]=skip.get((row[4], row[6]),0)-1
             continue
 
-        if  (startMove=='2' and endMove=='2') or (startMove=='3' and endMove=='2') or (startMove=='2' and endMove=='3') or (startMove=='3' and endMove=='4') or (startMove=='4' and endMove=='5') or (startMove=='5' and endMove=='5') or (startMove=='18' and endMove=='18' and comboerCharacter=='5') or (startMove=='19' and endMove=='19' and comboerCharacter=='8') or (startMove=='9' and endMove=='9' and comboerCharacter=='8') or (startMove=='10' and endMove=='10' and comboerCharacter=='20') or (startMove=='21' and endMove=='21' and comboerCharacter=='23') or (startMove=='21' and comboerCharacter=='7') or (startMove=='19' and endMove=='19' and (comboerCharacter=='26' or comboerCharacter=='18')):
-            #skip jab combos, Bowser's fire, Ness's fire, Ness's dtilt, Young Link's Fsmash, Pichu's thunder, Sheik's transform (??), dancing blade
+        if  (startMove=='2' and endMove=='2') or (startMove=='3' and endMove=='2') or (startMove=='2' and endMove=='3') or (startMove=='3' and endMove=='4') or (startMove=='4' and endMove=='5') or (startMove=='5' and endMove=='5') or (startMove=='18' and endMove=='18' and comboerCharacter=='5') or (startMove=='19' and endMove=='19' and comboerCharacter=='8') or (startMove=='9' and endMove=='9' and comboerCharacter=='8') or (startMove=='10' and endMove=='10' and (comboerCharacter=='20' or comboerCharacter=='6')) or (startMove=='21' and endMove=='21' and comboerCharacter=='23') or (startMove=='21' and comboerCharacter=='7') or (startMove=='19' and endMove=='19' and (comboerCharacter=='26' or comboerCharacter=='18')) or (startMove=='20' and comboerCharacter=='15'):
+            #skip jab combos, Bowser's fire, Ness's fire, Ness's dtilt, Both Link's Fsmash, Pichu's thunder, Sheik's transform (??), dancing blade
             skip[(row[4], row[6])]=skip.get((row[4], row[6]),0)-1
             continue
 

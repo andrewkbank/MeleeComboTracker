@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<!-- test HTML for selecting elements. -->
+
+<html>
+  <head>
+    <link rel="icon" href="data:;base64,iVBORw0KGgo="></link>
+    <script src="https://unpkg.com/@panzoom/panzoom@4.5.1/dist/panzoom.min.js"></script>
+  </head>
+  <style>
+  .svg-container{
+    width:100%;
+    height:100%;
+  }
+  .combo-info-container{
+    width:auto;
+    position:absolute;
+    display:flex;
+    flex-direction:column;
+  }
+  .combo-info{
+    width:fit-content;
+    height:fit-content;
+    z-index:9;
+    position:relative;
+    float:left;
+    background: #fafafa;
+    border:2px solid #000000;
+    border-radius:10px;
+    padding:20px;
+    display:inline-block;
+  }
+  .zoomable{
+    z-index:8;
+  }
+  .collapsible{
+    cursor:pointer;
+  }
+  .collapsible-content{
+    display:none;
+    overflow:hidden;
+  }
+  object {
+    z-index:0;
+    pointer-events: stroke;
+  }
+  </style>
+  <body>
+      <script>
+      // Declare global variables
+      var parsed;
+      var panzoom;
+      </script>
+      <script type="module", src="./parse_csv.js"></script>
+    <!-- make server stop complaining about flavicon requests. -->
+      <!-- load SVG file.-->
+    <div class='svg-container' id="container">
+      <div class='combo-info-container'>
+        <div class='combo-info'id = "info">
+          Please click on a combo path to begin. <br>
+          Detailed information will be displayed here.
+        </div>
+        <div class='combo-info'>
+        <button type='button' class='collapsible' id='filter-collapsable'>Character Filter</button>
+        <div class='collapsible-content' id='filter-container'>
+        </div>
+        </div>
+      </div>
+      <!-- TODO: programatically pass SVG file to page.-->
+      <!-- TODO: this should be done with an external page, launched by the Rust program. -->
+      <div class='zoomable 'id="zoomable">
+        <style></style>
+        <object id="svgobject" height='100%' data="test-map-4.svg"></object>
+      </div>
+      <script src="./launch_svg.js"></script>
+    </div>
+  </body>
+</html>
+
+

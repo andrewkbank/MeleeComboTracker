@@ -14,22 +14,22 @@ use ssbm_data::action_state::Common::{*};
 
 
 fn main() -> Result<(), Box<dyn Error>>{
-    //let mut zip = zip::ZipArchive::new(File::open("tests/Slippi Dumps.zip").unwrap()).unwrap();
-    let mut massive_fucking_file = File::open("tests/ranked-anonymized.7z").unwrap();
+    let mut zip = zip::ZipArchive::new(File::open("tests/testFolder.zip").unwrap()).unwrap();
+    //let mut massive_fucking_file = File::open("tests/ranked-anonymized.7z").unwrap();
 
     // Create a new CSV file
-    let mut wtr = Writer::from_path("combos.csv")?;
+    let mut wtr = Writer::from_path("combos2.csv")?;
     wtr.write_record(&["Start x","Start y","End x","End y","Start Move","End Move","Comboer Character","Comboee Character","Start %","End %","Frames Between Moves","Stage"])?;
 
     let mut move_counts: std::collections::HashMap<(u8,u8),usize> = std::collections::HashMap::new();
 
-    //parse_zip_file(zip,&mut wtr,&mut move_counts);
+    parse_zip_file(zip,&mut wtr,&mut move_counts);
     //parse_slp_file(fs::File::open("tests/test1.slp").unwrap(),&mut wtr,&mut move_counts);
-    parse_7z_file(massive_fucking_file,&mut wtr,&mut move_counts);
+    //parse_7z_file(massive_fucking_file,&mut wtr,&mut move_counts);
     // Flush and close the writer
     wtr.flush()?;
 
-    let mut wtr2 = Writer::from_path("totals.csv")?;
+    let mut wtr2 = Writer::from_path("totals2.csv")?;
     wtr2.write_record(&["Character","Move","Total Count"])?;
     // Print the counts
     for (coord, count) in &move_counts {
