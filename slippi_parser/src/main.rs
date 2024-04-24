@@ -1,4 +1,7 @@
 use csv::Writer;
+use web_front::csv_to_svg;
+use std::env;
+use std::process::exit;
 use std::{fs, io, error::Error,fs::File};
 use std::io::Seek;
 use std::io::Write;
@@ -9,6 +12,7 @@ use peppi::frame::Rollbacks;
 // `ssbm-data` provides enums for characters, stages, action states, etc.
 use ssbm_data::action_state::Common::{*};
 
+mod web_front;
 
 //stole a lot from https://github.com/project-slippi/slippi-js/blob/master/src/stats/combos.ts#L7
 
@@ -16,11 +20,41 @@ use ssbm_data::action_state::Common::{*};
 fn main() -> Result<(), Box<dyn Error>>{
     let mut zip = zip::ZipArchive::new(File::open("tests/testFolder.zip").unwrap()).unwrap();
     //let mut massive_fucking_file = File::open("tests/ranked-anonymized.7z").unwrap();
+    // Collect arguments and execute.
+    let args: Vec<String> = env::args().collect();
+    //for i in 1..args.len(){
+    let mut i = 1;
+    while i < args.len(){
+        if args[i].eq("--csv-to-svg") {
+            if args.len() - i <= 1 { // Not enough arguments.
+                println!("Error: no file path given.");
+                println!("Usage: slippi_parser --csv-to-svg [path/to/file]");
+                exit(1);
+            }
+
+            // Run the CSV to SVG conversion with the given file and terminate.
+            csv_to_svg(args[i+1].to_string())?;
+            i += 1;
+        }
+        i += 1;
+    }
+
+    // If there are no arguments, just run combo -> csv.
+    if args.len() == 1 {
+        write_combo_to_csv()?;
+    }
+
+    Ok(())
+}
+
+fn write_combo_to_csv() -> Result<(), Box<dyn Error>>{
+    let mut zip = zip::ZipArchive::new(File::open("tests/testfolder.zip").unwrap()).unwrap();
 
     // Create a new CSV file
     let mut wtr = Writer::from_path("combos2.csv")?;
     wtr.write_record(&["Start x","Start y","End x","End y","Start Move","End Move","Comboer Character","Comboee Character","Start %","End %","Frames Between Moves","Stage"])?;
 
+<<<<<<< HEAD
     let mut move_counts: std::collections::HashMap<(u8,u8),usize> = std::collections::HashMap::new();
 
     parse_zip_file(zip,&mut wtr,&mut move_counts);
