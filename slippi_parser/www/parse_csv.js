@@ -10,3 +10,4 @@ const response = await fetch("combos.csv")
 
 // Parse it into a 2d array for the rest of the program
 console.log(parsed ? "Parse successful." : "Parse failed.");
+ 
